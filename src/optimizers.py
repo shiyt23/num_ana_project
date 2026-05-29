@@ -121,19 +121,27 @@ def _run_nesterov(
     L: float | None = None,
     **_,
 ) -> RunResult:
-    """Nesterov 加速梯度：在 y_k=x_k+β(x_k-x_{k-1}) 处取梯度。"""
+    """
+    强凸 Nesterov 加速梯度（Nesterov 2004, §2.2.1）：
+        y_k = x_k + β (x_k - x_{k-1})
+        x_{k+1} = y_k - (1/L) ∇f(y_k)
+    使用 β = (√κ - 1)/(√κ + 1)。注意梯度在 y_k 处取，
+    曲线 f(x_k) 不一定单调（典型 Nesterov 行为，正确实现亦如此）。
+    """
     mu, L = _resolve_spectrum(a, mu, L)
     kappa = L / mu
     step = lr if lr is not None else 1.0 / L
     beta = (np.sqrt(kappa) - 1) / (np.sqrt(kappa) + 1)
 
-    x, x_prev = x0.copy(), x0.copy()
+    x = x0.copy()
+    x_prev = x0.copy()
     xs, fs, gs, ps = [x.copy()], [objective(a, b, x)], [gradient(a, b, x)], [np.eye(len(x)) * step]
     for _ in range(max_iter):
         y = x + beta * (x - x_prev)
-        g = gradient(a, b, y)
-        x_new = x - step * g
-        x_prev, x = x, x_new
+        g_y = gradient(a, b, y)
+        x_new = y - step * g_y
+        x_prev = x
+        x = x_new
         p_k = np.eye(len(x)) * step
         xs.append(x.copy())
         fs.append(objective(a, b, x))
@@ -226,35 +234,38 @@ def _run_sophia(
     lr: float | None,
     beta1: float = 0.9,
     beta2: float = 0.99,
-    eps: float = 1e-8,
-    gamma: float = 0.25,
-    clip: float = 1.0,
+    eps: float = 1e-12,
+    rho: float = 0.04,
+    hess_interval: int = 10,
     mu: float | None = None,
     L: float | None = None,
     **_,
 ) -> RunResult:
     """
-    简化 Sophia：用 EMA(g^2) 作对角曲率估计 h_k，更新
-    x <- x - eta * clip(m / max(gamma * h, eps), ±clip)。
+    Sophia-H 风格（Liu et al. 2023, Algorithm 1，二次问题特化）：
+        h_k+1 = β2 h_k + (1-β2) diag(A)           (二次问题 Hessian 对角)
+        m_k+1 = β1 m_k + (1-β1) g_k
+        x_{k+1} = x_k - η · clip( m_hat / max(h_hat, eps),  ρ )
+    取 ρ 较小以维持稳定；hess_interval 为 Hessian 重采样间隔。
     """
     _ = _resolve_spectrum(a, mu, L)
-    step = lr if lr is not None else 0.05
+    step = lr if lr is not None else 0.5
     dim = len(x0)
     x = x0.copy()
     m = np.zeros(dim)
     h = np.zeros(dim)
+    diag_h = np.diag(a).copy()
     xs, fs, gs, ps = [x.copy()], [objective(a, b, x)], [gradient(a, b, x)], [np.eye(dim)]
 
     for t in range(1, max_iter + 1):
         g = gradient(a, b, x)
         m = beta1 * m + (1 - beta1) * g
-        h = beta2 * h + (1 - beta2) * (g * g)
-        m_hat = m / (1 - beta1**t)
-        h_hat = h / (1 - beta2**t)
-        ratio = m_hat / np.maximum(gamma * h_hat, eps)
-        ratio = np.clip(ratio, -clip, clip)
-        p_k = np.diag(np.full(dim, step))
-        x = x - step * ratio
+        if (t - 1) % hess_interval == 0:
+            h = beta2 * h + (1 - beta2) * diag_h
+        h_clamped = np.maximum(h, eps)
+        update = np.clip(m / h_clamped, -rho, rho)
+        p_k = np.diag(step / h_clamped)
+        x = x - step * update
         xs.append(x.copy())
         fs.append(objective(a, b, x))
         gs.append(gradient(a, b, x))

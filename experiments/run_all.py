@@ -201,40 +201,67 @@ def exp3_newton_schulz() -> dict:
 
 
 def exp4_preconditioner_evolution() -> dict:
-    """实验4：Adam 有效预条件条件数随迭代演化。"""
-    fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+    """实验4：Adam 有效预条件条件数 κ_eff 随迭代演化。
 
-    for ax, kappa in zip(axes, CONDITION_NUMBERS):
-        a, b, mu, L = make_quadratic_problem(DIM, kappa, seed=SEED)
-        x0 = np.zeros(DIM)
-        run = run_optimizer("adam", a, b, x0, MAX_ITER, lr=ADAM_LR_PRECOND_STUDY, mu=mu, L=L)
+    重点说明：早期 ŷv_k 小→预条件 ill-conditioned；中后期 κ_eff 才下降。
+    本实验分两组：
+      (a) 默认 (β1,β2)=(0.9, 0.999)；
+      (b) (β1,β2)=(0.0, 0.99) "快速适应版"，对角 A 上应快速降到 κ_eff ≈ 1。
+    """
+    results = {}
+    fig, axes = plt.subplots(2, 3, figsize=(14, 7))
 
-        kappa_true = float(np.linalg.cond(a))
-        kappa_eff = [
-            effective_preconditioned_condition_number(a, p)
-            for p in run.preconditioners[1:]
-        ]
-        ax.plot(kappa_eff, color="#2ca02c", linewidth=1.5)
-        ax.axhline(kappa_true, color="gray", linestyle="--", label=rf"$\kappa(A)={kappa_true:.0f}$")
-        ax.set_title(f"Target kappa ~ {kappa}")
-        ax.set_xlabel("Iteration k")
-        ax.set_yscale("log")
-        ax.legend(fontsize=8)
-        ax.grid(True, alpha=0.3)
+    diag_kappa = 100.0  # 用对角矩阵观察 Adam 是否能恢复 κ_eff = 1
 
-    axes[0].set_ylabel(r"$\kappa(P_k^{-1} A)$")
-    fig.suptitle("Adam: effective preconditioned condition number", fontsize=12)
+    for col, kappa in enumerate(CONDITION_NUMBERS):
+        for row, (cfg_label, beta1, beta2, lr) in enumerate([
+            ("default (0.9, 0.999)", 0.9, 0.999, ADAM_LR_PRECOND_STUDY),
+            ("fast adapt (0.0, 0.99)", 0.0, 0.99, 0.5),
+        ]):
+            a, b, mu, L = make_quadratic_problem(DIM, kappa, seed=SEED)
+            x0 = np.zeros(DIM)
+            run = run_optimizer(
+                "adam", a, b, x0, MAX_ITER, lr=lr, mu=mu, L=L,
+                beta1=beta1, beta2=beta2,
+            )
+            kappa_true = float(np.linalg.cond(a))
+            kappa_eff = [
+                effective_preconditioned_condition_number(a, p)
+                for p in run.preconditioners[1:401]
+            ]
+            ax = axes[row, col]
+            ax.plot(kappa_eff, color="#2ca02c", linewidth=1.4)
+            ax.axhline(kappa_true, color="gray", linestyle="--",
+                       label=rf"$\kappa(A)={kappa_true:.0f}$")
+            ax.set_title(rf"$\kappa={kappa}$, {cfg_label}", fontsize=10)
+            if row == 1:
+                ax.set_xlabel("Iteration k (first 400)")
+            ax.set_yscale("log")
+            ax.legend(fontsize=7)
+            ax.grid(True, alpha=0.3)
+            results[f"kappa{kappa}_b1_{beta1}_b2_{beta2}_kappa_eff_final"] = float(
+                kappa_eff[-1]
+            )
+            results[f"kappa{kappa}_b1_{beta1}_b2_{beta2}_kappa_eff_min"] = float(
+                min(kappa_eff)
+            )
+
+    axes[0, 0].set_ylabel(r"Default $\kappa(P_k^{-1} A)$")
+    axes[1, 0].set_ylabel(r"Fast-adapt $\kappa(P_k^{-1} A)$")
+    fig.suptitle(
+        "Adam effective preconditioner $\\kappa_{\\mathrm{eff}}$ "
+        "(top: default; bottom: fast-adapt $\\beta$)",
+        fontsize=12,
+    )
     fig.tight_layout()
     fig.savefig(FIG_DIR / "exp4_precond_kappa.png", dpi=150)
     plt.close(fig)
 
-    # GD 常数预条件对比
     a, b, mu_100, L_100 = make_quadratic_problem(DIM, 100, seed=SEED)
     step = 2.0 / (mu_100 + L_100)
     p_gd = np.eye(DIM) * step
-    kappa_gd_eff = effective_preconditioned_condition_number(a, p_gd)
-
-    return {"kappa_100_adam_final_eff": float(kappa_eff[-1]), "kappa_100_gd_eff": kappa_gd_eff}
+    results["kappa_100_gd_eff"] = effective_preconditioned_condition_number(a, p_gd)
+    return results
 
 
 def exp5_step_size_sensitivity() -> dict:
@@ -268,14 +295,34 @@ def _first_below(values: list[float], tol: float) -> int | None:
     return None
 
 
-def _fit_log_linear_rate(gaps: list[float], start: int = 30, end: int = 200) -> float | None:
-    """拟合 log(gap_k) ≈ k log ρ + c，返回经验收敛率 ρ_emp。"""
-    end = min(end, len(gaps))
+def _fit_log_linear_rate(
+    gaps: list[float],
+    start: int | None = None,
+    end: int | None = None,
+    floor: float = 1e-18,
+) -> float | None:
+    """拟合 log(gap_k) ≈ k log ρ + c，返回经验收敛率 ρ_emp。
+
+    自适应窗口：自动避开早期非渐近段与末段精度地板。
+    """
+    n = len(gaps)
+    if n < 30:
+        return None
+    if start is None:
+        # 跳过早期 10% 步或 10 步
+        start = max(10, int(0.05 * n))
+    if end is None:
+        # 末段截到 gap < 1e3 * floor 之前
+        end = n
+        for i in range(n - 1, start, -1):
+            if gaps[i] > 1e3 * floor:
+                end = i + 1
+                break
     if end - start < 15:
         return None
     ks, ys = [], []
     for k in range(start, end):
-        if gaps[k] > 1e-22 and gaps[k - 1] > 0 and gaps[k] < gaps[k - 1]:
+        if gaps[k] > floor and gaps[k - 1] > 0 and gaps[k] < gaps[k - 1]:
             ks.append(k)
             ys.append(np.log(gaps[k]))
     if len(ks) < 12:
@@ -519,13 +566,15 @@ def exp9_newton_schulz_domain() -> dict:
 
 
 def exp10_trajectories_2d() -> dict:
-    """实验10：二维病态二次曲面上的优化轨迹。"""
+    """实验10：二维病态二次曲面上的优化轨迹（含 Nesterov）。
+
+    避免之前误读：Adam 路径短 ≠ Adam 更快；同时画 80 步到 x* 的剩余距离。
+    """
     kappa = 100.0
-    a, b, _, _ = make_quadratic_problem(2, kappa, seed=SEED)
+    a, b, mu, L = make_quadratic_problem(2, kappa, seed=SEED)
     x_star = optimal_point(a, b)
     f_star = objective(a, b, x_star)
 
-    # 构造等高线网格
     span = 3.0
     n_grid = 80
     coords = np.linspace(-span, span, n_grid)
@@ -537,27 +586,60 @@ def exp10_trajectories_2d() -> dict:
             z[i, j] = objective(a, b, pt) - f_star
 
     x0 = np.array([2.5, 2.0])
-    fig, ax = plt.subplots(figsize=(6.5, 5.5))
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5.5))
+    ax = axes[0]
     levels = np.logspace(-1, 3.5, 20)
     ax.contour(x1g, x2g, z, levels=levels, cmap="viridis", alpha=0.6)
     ax.plot(x_star[0], x_star[1], "r*", markersize=14, label=r"$x^*$")
 
-    colors = {"gd": "#1f77b4", "momentum": "#ff7f0e", "adam": "#2ca02c"}
+    colors = {
+        "gd": "#1f77b4",
+        "momentum": "#ff7f0e",
+        "nesterov": "#9467bd",
+        "adam": "#2ca02c",
+    }
     results = {}
-    for name in ["gd", "momentum", "adam"]:
-        kwargs = {"beta": -1} if name == "momentum" else {}
+    n_steps = 80
+    convergence_data = {}
+    for name in ["gd", "momentum", "nesterov", "adam"]:
+        kwargs = {"mu": mu, "L": L}
+        if name == "momentum":
+            kwargs["beta"] = -1
         lr = ADAM_LR_2D if name == "adam" else None
-        run = run_optimizer(name, a, b, x0.copy(), 80, lr=lr, **kwargs)
+        run = run_optimizer(name, a, b, x0.copy(), n_steps, lr=lr, **kwargs)
         xs = np.array(run.xs)
-        ax.plot(xs[:, 0], xs[:, 1], "o-", color=colors[name], markersize=3, linewidth=1.2, label=name.upper())
-        results[f"path_length_{name}"] = float(np.sum(np.linalg.norm(np.diff(xs, axis=0), axis=1)))
+        ax.plot(
+            xs[:, 0], xs[:, 1], "o-",
+            color=colors[name], markersize=2.5, linewidth=1.0,
+            label=name.upper(),
+        )
+        results[f"path_length_{name}"] = float(
+            np.sum(np.linalg.norm(np.diff(xs, axis=0), axis=1))
+        )
+        results[f"dist_to_optimum_{name}"] = float(
+            np.linalg.norm(xs[-1] - x_star)
+        )
+        gaps = [max(f - f_star, 1e-30) for f in run.fs]
+        convergence_data[name] = gaps
 
     ax.plot(x0[0], x0[1], "ko", markersize=8, label=r"$x_0$")
     ax.set_xlabel(r"$x_1$")
     ax.set_ylabel(r"$x_2$")
-    ax.set_title(r"2D trajectories, $\kappa=100$ (elongated valley)")
+    ax.set_title(r"2D trajectories, $\kappa=100$")
     ax.legend(fontsize=8)
     ax.set_aspect("equal")
+
+    # 右图：同步收敛曲线
+    ax2 = axes[1]
+    for name, gaps in convergence_data.items():
+        ax2.semilogy(gaps, color=colors[name], linewidth=1.5,
+                    label=name.upper())
+    ax2.set_xlabel("Iteration k")
+    ax2.set_ylabel(r"$f - f^*$")
+    ax2.set_title("Convergence over same 80 iterations")
+    ax2.legend(fontsize=8)
+    ax2.grid(True, alpha=0.3)
+
     fig.tight_layout()
     fig.savefig(FIG_DIR / "exp10_trajectories_2d.png", dpi=150)
     plt.close(fig)

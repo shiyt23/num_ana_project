@@ -11,7 +11,7 @@ DIM = 20
 CONDITION_NUMBERS = [10, 100, 1000]
 
 # 迭代
-MAX_ITER = 600
+MAX_ITER = 2000  # 取较大上限以便 GD 在 κ=1000 时仍可到 tol
 TOL = 1e-6
 
 # 随机性：主实验固定种子；多种子实验使用 SEEDS
