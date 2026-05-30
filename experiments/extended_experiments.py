@@ -65,6 +65,14 @@ from src.spectral_trust_region import (
     run_muon_on_spectral_recovery,
     spectral_recovery_loss,
 )
+from src.steepest_descent_norms import (
+    dual_norm_value,
+    lmo_euclidean,
+    lmo_linf,
+    lmo_spectral,
+    update_condition_number,
+    verify_lmo_optimality,
+)
 
 
 def _first_below(values: list[float], tol: float) -> int | None:
@@ -691,10 +699,12 @@ def exp22_beta_eta_heatmap() -> dict:
 
 
 def exp25_heavy_ball_chebyshev_equivalence() -> dict:
-    """E25: Heavy-ball ≡ Chebyshev 半迭代（核心理论结果数值验证）。
+    """E25: Heavy-ball = Chebyshev 半迭代的"定常极限"（核心理论结果数值验证）。
 
-    主张：在二次目标上，Polyak Heavy-ball 用最优 (η*, β*) 与
-    Chebyshev 半迭代（时变 ω_k → β*）渐近等价。
+    精确主张（定理 4）：Chebyshev 半迭代是有限步 minimax 最优的（每一步都最优），
+    其时变系数 ω_k 单调收敛到 ω_∞ = 1 + β*；Polyak Heavy-ball 用定常 β* 即 ω_∞，
+    因此 HB 是 Chebyshev 的"冻结系数版本"，二者共享同一渐近收敛率，
+    且 Chebyshev 在任意有限 k 上不慢于 HB。
     """
     kappa = 100.0
     a, b, mu, L = make_quadratic_problem(DIM, kappa, seed=SEED)
@@ -708,36 +718,59 @@ def exp25_heavy_ball_chebyshev_equivalence() -> dict:
     gaps_cheb = [max(f - f_star, 1e-30) for f in fs_cheb]
     gaps_hb = [max(f - f_star, 1e-30) for f in fs_hb]
 
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.2))
+    # Chebyshev 时变系数 ω_k 的递推 + 理论极限 ω_∞ = 1 + β*
+    sigma = (L - mu) / (L + mu)
+    beta_star = ((np.sqrt(L) - np.sqrt(mu)) / (np.sqrt(L) + np.sqrt(mu))) ** 2
+    omega_inf = 1.0 + beta_star
+    omegas = []
+    omega = 1.0 / (1.0 - 0.5 * sigma * sigma)
+    omegas.append(omega)
+    for _ in range(60):
+        omega = 1.0 / (1.0 - 0.25 * sigma * sigma * omega)
+        omegas.append(omega)
+
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4.2))
+
+    # 左：收敛曲线对照（含 minimax 上界）
     axes[0].semilogy(gaps_cheb, label="Chebyshev semi-iterative",
                     color="#1f77b4", linewidth=1.7)
-    axes[0].semilogy(gaps_hb, label="Heavy-ball (Polyak optimal)",
+    axes[0].semilogy(gaps_hb, label="Heavy-ball (Polyak, frozen $\\omega_\\infty$)",
                     color="#ff7f0e", linewidth=1.7, linestyle="--")
-    # 理论上界（Chebyshev minimax）
     bounds = [max(2 * chebyshev_minimax_bound(k, kappa) ** 2 * gaps_cheb[0], 1e-30)
               for k in range(len(gaps_cheb))]
     axes[0].semilogy(bounds, "k:", linewidth=1, label=r"Cheb. minimax bound")
     axes[0].set_xlabel("Iteration k")
     axes[0].set_ylabel(r"$f - f^*$")
-    axes[0].set_title(rf"$\kappa={int(kappa)}$: Chebyshev $\equiv$ Polyak HB")
+    axes[0].set_title(rf"$\kappa={int(kappa)}$: convergence")
     axes[0].legend(fontsize=8)
     axes[0].grid(True, alpha=0.3)
 
-    # 误差多项式可视化
-    lam_grid = np.linspace(mu, L, 200)
-    for k in [5, 10, 20, 40]:
-        e_poly = [chebyshev_error_polynomial(k, lam, mu, L) for lam in lam_grid]
-        axes[1].plot(lam_grid, np.abs(e_poly), label=f"k={k}", linewidth=1.2)
-    axes[1].axhline(1, color="gray", linestyle=":")
-    axes[1].set_yscale("log")
-    axes[1].set_xlabel(r"$\lambda$ (eigenvalue of $A$)")
-    axes[1].set_ylabel(r"$|e_k(\lambda)|$")
-    axes[1].set_title(r"Chebyshev error polynomial $|e_k(\lambda)|$")
+    # 中：系数收敛 ω_k → 1 + β*（定理 4 的直接证据）
+    axes[1].plot(range(len(omegas)), omegas, "o-", color="#1f77b4",
+                markersize=3, linewidth=1.2, label=r"Chebyshev $\omega_k$")
+    axes[1].axhline(omega_inf, color="#ff7f0e", linestyle="--",
+                   label=rf"$\omega_\infty = 1+\beta^* = {omega_inf:.4f}$")
+    axes[1].set_xlabel("Iteration k")
+    axes[1].set_ylabel(r"Recurrence coefficient $\omega_k$")
+    axes[1].set_title(r"$\omega_k \to 1+\beta^*$ (Theorem 4)")
     axes[1].legend(fontsize=8)
     axes[1].grid(True, alpha=0.3)
 
-    fig.suptitle("E25: Heavy-ball ≡ Chebyshev semi-iteration (numerical equivalence)",
-                 fontsize=12)
+    # 右：误差多项式可视化
+    lam_grid = np.linspace(mu, L, 200)
+    for k in [5, 10, 20, 40]:
+        e_poly = [chebyshev_error_polynomial(k, lam, mu, L) for lam in lam_grid]
+        axes[2].plot(lam_grid, np.abs(e_poly), label=f"k={k}", linewidth=1.2)
+    axes[2].axhline(1, color="gray", linestyle=":")
+    axes[2].set_yscale("log")
+    axes[2].set_xlabel(r"$\lambda$ (eigenvalue of $A$)")
+    axes[2].set_ylabel(r"$|e_k(\lambda)|$")
+    axes[2].set_title(r"Chebyshev error polynomial")
+    axes[2].legend(fontsize=8)
+    axes[2].grid(True, alpha=0.3)
+
+    fig.suptitle("E25: Heavy-ball is the frozen-coefficient limit of Chebyshev "
+                 "semi-iteration", fontsize=12)
     fig.tight_layout()
     fig.savefig(FIG_DIR / "exp25_hb_chebyshev.png", dpi=150)
     plt.close(fig)
@@ -747,6 +780,9 @@ def exp25_heavy_ball_chebyshev_equivalence() -> dict:
         )),
         "cheb_final": float(gaps_cheb[-1]),
         "hb_final": float(gaps_hb[-1]),
+        "omega_inf_theory": float(omega_inf),
+        "omega_50_numeric": float(omegas[50]),
+        "omega_converged": bool(abs(omegas[50] - omega_inf) < 1e-4),
     }
 
 
@@ -966,79 +1002,266 @@ def exp29_nag_ode_vs_discrete() -> dict:
 
 
 def exp30_ns_convergence_basin() -> dict:
-    """E30: Newton-Schulz 收敛盆 (0, √3) 的数值可视化。
+    """E30: Newton-Schulz 收敛盆的精确刻画（三种归宿）。
 
-    NS 迭代 X_{k+1} = 0.5 X_k (3I - X_k^T X_k) 在标量情形下化为
-    σ_{k+1} = σ_k (3 - σ_k²) / 2，收敛域为 σ ∈ (0, √3)。
-    用奇异值最大初值 σ_max 在这个区间扫描，记录是否收敛。
+    标量动力学 σ_{k+1} = σ_k(3 - σ_k²)/2 有三个不动点 {-1, 0, +1}。
+    诚实的相图（不只是"收敛 vs 发散"）：
+      σ₀ ∈ (0, √3)        → +1  （收敛到正确的极因子 +U）
+      σ₀ = √3             → 0   （退化，映到平凡不动点）
+      σ₀ ∈ (√3, ~2.06)    → -1  （正交化误差 →0，但收敛到 -U，符号错）
+      σ₀ ≳ 2.06           → ±∞  （真正发散）
+    因此"极分解的正确收敛盆"恰为 (0, √3)；越过 √3 即便正交化误差归零，
+    也已收敛到 -U（错误的极因子）。我们的实验同时记录归宿符号，
+    避免把 |σ²-1|→0 误读为"收敛到正确因子"。
     """
-    # σ 从 0.05 到 2.5，跨越收敛盆边界 √3 ≈ 1.732 两侧
-    sigma_init = np.linspace(0.05, 2.5, 100)
-    iters_to_conv = []
-    finals = []
+    sigma_init = np.linspace(0.05, 2.5, 120)
+    finals = []      # 最终 |σ²-1|（正交化误差）
+    signs = []       # 最终符号（+1 / -1 / 0=divergent）
     for sigma in sigma_init:
         x = float(sigma)
-        errs = [abs(x * x - 1)]
         diverged = False
-        for _ in range(40):
+        for _ in range(60):
             if abs(x) > 1e8 or not np.isfinite(x):
                 diverged = True
                 break
             x = 0.5 * x * (3.0 - x * x)
-            errs.append(abs(x * x - 1))
-        finals.append(float("inf") if diverged else errs[-1])
-        below = [i for i, e in enumerate(errs) if e < 1e-6]
-        iters_to_conv.append(below[0] if below else None)
+        if diverged:
+            finals.append(float("inf"))
+            signs.append(0)
+        else:
+            finals.append(abs(x * x - 1))
+            signs.append(1 if x > 0.5 else (-1 if x < -0.5 else 0))
 
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.2))
-    # 左：σ 演化轨迹
-    sig_demo = [0.2, 0.7, 1.0, 1.5, 1.7, 1.85]
-    for s0 in sig_demo:
+    sqrt3 = np.sqrt(3)
+    # 从 0 起的最大连续 +U 盆：第一个非 +U 的 σ₀
+    contiguous_plus_upper = sqrt3
+    for s, sg in zip(sigma_init, signs):
+        if sg != 1:
+            contiguous_plus_upper = s
+            break
+    minus_min = min((s for s, sg in zip(sigma_init, signs) if sg == -1), default=np.inf)
+    minus_max = max((s for s, sg in zip(sigma_init, signs) if sg == -1), default=0)
+    div_min = min((s for s, f in zip(sigma_init, finals) if not np.isfinite(f)),
+                  default=np.inf)
+    # (0, √3) 内全部收敛到 +U？
+    all_below_sqrt3_plus = all(
+        sg == 1 for s, sg in zip(sigma_init, signs) if s < sqrt3
+    )
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.4))
+    # 左：σ 演化轨迹，展示三种归宿
+    demo = [(0.3, "#1f77b4"), (1.0, "#1f77b4"), (1.6, "#1f77b4"),
+            (1.78, "#2ca02c"), (2.0, "#2ca02c"), (2.2, "#d62728")]
+    for s0, col in demo:
         traj = [s0]
         s = s0
-        for _ in range(15):
+        for _ in range(12):
+            if abs(s) > 1e6:
+                break
             s = 0.5 * s * (3 - s * s)
             traj.append(s)
-        axes[0].plot(traj, "o-", markersize=3, linewidth=1,
+        axes[0].plot(traj, "o-", markersize=3, linewidth=1, color=col,
                     label=rf"$\sigma_0={s0}$")
-    axes[0].axhline(1, color="red", linestyle="--", alpha=0.6, label=r"$\sigma^*=1$")
-    axes[0].axhline(np.sqrt(3), color="gray", linestyle=":", alpha=0.7,
-                   label=r"$\sqrt{3}$ (basin bdry)")
+    axes[0].axhline(1, color="green", linestyle="--", alpha=0.7, label=r"$+1$ (correct $+U$)")
+    axes[0].axhline(-1, color="orange", linestyle="--", alpha=0.7, label=r"$-1$ (wrong $-U$)")
+    axes[0].axhline(0, color="gray", linestyle=":", alpha=0.5)
     axes[0].set_xlabel("NS iteration k")
     axes[0].set_ylabel(r"$\sigma_k$")
-    axes[0].set_title(r"NS on scalar: $\sigma_{k+1} = \sigma_k(3 - \sigma_k^2)/2$")
-    axes[0].legend(fontsize=7, loc="upper right")
+    axes[0].set_title(r"Scalar NS: three fates $\{-1, 0, +1\}$")
+    axes[0].legend(fontsize=7, loc="lower left", ncol=2)
     axes[0].grid(True, alpha=0.3)
-    axes[0].set_ylim(-0.5, 3.0)
+    axes[0].set_ylim(-2.2, 3.0)
 
-    # 右：σ_init vs 收敛步数（含发散段）
-    finite = [(s, f) for s, f in zip(sigma_init, finals) if np.isfinite(f)]
-    finite_x, finite_y = zip(*finite) if finite else ([], [])
-    div = [(s, f) for s, f in zip(sigma_init, finals) if not np.isfinite(f)]
-    axes[1].semilogy(finite_x, np.maximum(finite_y, 1e-18), "o-",
-                    color="#1f77b4", markersize=2, linewidth=1,
-                    label="Final |σ²-1| after 30 NS")
-    axes[1].axvline(np.sqrt(3), color="red", linestyle="--",
-                   label=r"$\sqrt{3}$ (theoretical basin)")
-    axes[1].axvline(1.0, color="green", linestyle=":", label=r"$\sigma=1$ (fixed pt)")
-    if div:
-        axes[1].axvspan(min(s for s, _ in div), 2.2, alpha=0.15, color="red",
-                       label="Divergence region")
+    # 右：σ_init vs 归宿区域着色
+    plus_x = [s for s, sg in zip(sigma_init, signs) if sg == 1]
+    minus_x = [s for s, sg in zip(sigma_init, signs) if sg == -1]
+    div_x = [s for s, sg, f in zip(sigma_init, signs, finals) if not np.isfinite(f)]
+    axes[1].scatter(plus_x, [1] * len(plus_x), c="#2ca02c", s=16,
+                   label=rf"$\to +U$ ($\sigma_0 < \sqrt{{3}}$): {len(plus_x)} pts")
+    axes[1].scatter(minus_x, [0] * len(minus_x), c="#ff7f0e", s=16,
+                   label=rf"$\to -U$ (wrong sign): {len(minus_x)} pts")
+    axes[1].scatter(div_x, [-1] * len(div_x), c="#d62728", s=16,
+                   label=rf"diverge: {len(div_x)} pts")
+    axes[1].axvline(sqrt3, color="black", linestyle="--",
+                   label=rf"$\sqrt{{3}} = {sqrt3:.4f}$")
+    axes[1].set_yticks([-1, 0, 1])
+    axes[1].set_yticklabels(["diverge", r"$\to -U$", r"$\to +U$"])
     axes[1].set_xlabel(r"Initial $\sigma_0$")
-    axes[1].set_ylabel("Final orthogonality error")
-    axes[1].set_title("Convergence basin of Newton-Schulz")
-    axes[1].legend(fontsize=8)
+    axes[1].set_title("Fate vs initial singular value")
+    axes[1].legend(fontsize=7, loc="center right")
     axes[1].grid(True, alpha=0.3)
 
-    fig.suptitle(r"E30: NS convergence basin $\sigma \in (0, \sqrt{3})$", fontsize=12)
+    fig.suptitle(r"E30: NS basin — correct polar factor requires $\sigma_0 \in (0, \sqrt{3})$",
+                 fontsize=12)
     fig.tight_layout()
     fig.savefig(FIG_DIR / "exp30_ns_basin.png", dpi=150)
     plt.close(fig)
     return {
-        "basin_upper_bound_theory": float(np.sqrt(3)),
-        "n_div_above_sqrt3": int(sum(1 for s, f in zip(sigma_init, finals)
-                                     if s > np.sqrt(3) and not np.isfinite(f))),
+        "basin_upper_bound_theory": float(sqrt3),
+        "contiguous_plus_basin_upper": float(contiguous_plus_upper),
+        "all_below_sqrt3_converge_plus": bool(all_below_sqrt3_plus),
+        "n_converge_plus": int(sum(1 for sg in signs if sg == 1)),
+        "n_converge_minus_wrong": int(sum(1 for sg in signs if sg == -1)),
+        "n_diverge": int(sum(1 for f in finals if not np.isfinite(f))),
+        "wrong_sign_band": [float(minus_min) if np.isfinite(minus_min) else None,
+                            float(minus_max)],
+        "divergence_onset": float(div_min) if np.isfinite(div_min) else None,
+        "note": "beyond sqrt3 the basin is fractal: -U / bounce-back +U / divergence",
     }
+
+
+def exp31_muon_singular_value_equalization() -> dict:
+    """E31: Muon 更新的"奇异值均衡"结构性特征。
+
+    诚实主张（不是"Muon 比 GD 快"，而是 Muon 做了什么）：
+    无论梯度 G 的奇异值多么悬殊，Muon 更新 −UVᵀ 的全部奇异值都是 1
+    （条件数恒为 1）；GD 更新 −G 直接继承 G 的条件数。
+    这是 Muon 区别于 GD 的结构性特征——它把更新"均衡化"到所有奇异方向。
+    """
+    rng = np.random.default_rng(SEED)
+    kappa_grid = np.logspace(0, 3.5, 15)
+    gd_kappa, muon_kappa, signsgd_kappa = [], [], []
+    for kg in kappa_grid:
+        u, _ = np.linalg.qr(rng.standard_normal((10, 10)))
+        v, _ = np.linalg.qr(rng.standard_normal((6, 6)))
+        s = np.geomspace(1.0, kg, 6)
+        g = u[:, :6] @ np.diag(s) @ v.T
+        gd_kappa.append(update_condition_number(g, "euclidean"))
+        muon_kappa.append(update_condition_number(g, "spectral"))
+        signsgd_kappa.append(update_condition_number(g, "linf"))
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.4))
+    axes[0].loglog(kappa_grid, gd_kappa, "o-", color="#1f77b4",
+                  label="GD update (−G)")
+    axes[0].loglog(kappa_grid, signsgd_kappa, "^-", color="#2ca02c",
+                  label="signSGD update (−sign G)")
+    axes[0].loglog(kappa_grid, muon_kappa, "s-", color="#d62728",
+                  label="Muon update (−UVᵀ)")
+    axes[0].loglog(kappa_grid, kappa_grid, "k:", alpha=0.5,
+                  label=r"$\kappa(\mathrm{update})=\kappa(G)$")
+    axes[0].set_xlabel(r"Gradient condition number $\kappa(G)$")
+    axes[0].set_ylabel(r"Update condition number")
+    axes[0].set_title("Muon equalizes singular values: "
+                      r"$\kappa(\mathrm{update})\equiv 1$")
+    axes[0].legend(fontsize=8)
+    axes[0].grid(True, alpha=0.3, which="both")
+
+    # 右：单个梯度的奇异值谱 vs 三种更新的奇异值谱
+    u, _ = np.linalg.qr(rng.standard_normal((8, 8)))
+    v, _ = np.linalg.qr(rng.standard_normal((6, 6)))
+    s = np.geomspace(1.0, 200.0, 6)
+    g = u[:, :6] @ np.diag(s) @ v.T
+    sv_g = np.linalg.svd(g, compute_uv=False)
+    sv_gd = np.linalg.svd(lmo_euclidean(g), compute_uv=False)
+    sv_muon = np.linalg.svd(lmo_spectral(g), compute_uv=False)
+    idx = np.arange(len(sv_g))
+    w = 0.25
+    axes[1].bar(idx - w, sv_g / sv_g.max(), w, label="grad G (normalized)",
+               color="#1f77b4")
+    axes[1].bar(idx, sv_gd / sv_gd.max(), w, label="GD update (normalized)",
+               color="#2ca02c")
+    axes[1].bar(idx + w, sv_muon, w, label="Muon update (= all 1)",
+               color="#d62728")
+    axes[1].set_xlabel("Singular value index")
+    axes[1].set_ylabel("Singular value (normalized)")
+    axes[1].set_title(r"Spectra: $\kappa(G)=200$, Muon flattens to all-ones")
+    axes[1].legend(fontsize=8)
+    axes[1].grid(True, alpha=0.3, axis="y")
+
+    fig.suptitle("E31: Muon's structural property — singular-value equalization",
+                 fontsize=12)
+    fig.tight_layout()
+    fig.savefig(FIG_DIR / "exp31_muon_equalization.png", dpi=150)
+    plt.close(fig)
+    return {
+        "muon_update_kappa_max": float(max(muon_kappa)),
+        "gd_update_kappa_at_1000": float(gd_kappa[-1]),
+        "muon_kappa_always_1": bool(all(k < 1.0001 for k in muon_kappa)),
+    }
+
+
+def exp32_steepest_descent_norms() -> dict:
+    """E32: 范数视角下的最速下降三元组（GD=ℓ₂, signSGD=ℓ∞, Muon=谱范数）。
+
+    三者都是 LMO：d* = argmin_{‖d‖≤1} ⟨g, d⟩。验证：
+      (1) 各 LMO 解确实最优（蒙特卡洛对照随机方向）；
+      (2) 最优值 ⟨g, d*⟩ = −对偶范数（ℓ₂↔ℓ₂, ℓ∞↔ℓ₁, 谱↔核范数）；
+      (3) 在二次问题上三者的收敛行为对比。
+    """
+    rng = np.random.default_rng(SEED)
+    g = rng.standard_normal((8, 5))
+    norms = [("euclidean", "GD (ℓ₂)", "#1f77b4"),
+             ("linf", "signSGD (ℓ∞)", "#2ca02c"),
+             ("spectral", "Muon (spectral)", "#d62728")]
+    results = {}
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.4))
+
+    # 左：LMO 最优值 vs 随机方向（蒙特卡洛），验证 LMO 最优性
+    labels, lmo_vals, rand_vals, dual_vals = [], [], [], []
+    for key, lab, _ in norms:
+        v = verify_lmo_optimality(g, key, n_random=3000, seed=1)
+        labels.append(lab)
+        lmo_vals.append(v["lmo_value"])
+        rand_vals.append(v["best_random"])
+        dual_vals.append(-v["dual_norm"])
+        results[f"{key}_lmo_optimal"] = bool(v["lmo_is_optimal"])
+        results[f"{key}_lmo_value"] = float(v["lmo_value"])
+        results[f"{key}_neg_dual_norm"] = float(-v["dual_norm"])
+    x = np.arange(len(labels))
+    wd = 0.27
+    axes[0].bar(x - wd, lmo_vals, wd, label=r"LMO value $\langle g, d^*\rangle$",
+               color="#1f77b4")
+    axes[0].bar(x, dual_vals, wd, label=r"$-\|g\|_{\mathrm{dual}}$ (theory)",
+               color="#ff7f0e")
+    axes[0].bar(x + wd, rand_vals, wd, label="best of 3000 random dirs",
+               color="#cccccc")
+    axes[0].set_xticks(x)
+    axes[0].set_xticklabels(labels, fontsize=8)
+    axes[0].set_ylabel(r"$\langle g, d\rangle$ (lower = steeper)")
+    axes[0].set_title("LMO optimality: each norm's steepest direction")
+    axes[0].legend(fontsize=8)
+    axes[0].grid(True, alpha=0.3, axis="y")
+
+    # 右：三种最速下降在矩阵二次上的收敛（min ½‖AW−B‖²_F）
+    from src.matrix_quadratic import (make_matrix_problem, gradient as mat_grad,
+                                       objective as mat_obj)
+    a, b, w_star, mu, L = make_matrix_problem(10, 6, 50.0, seed=SEED)
+    f_star = mat_obj(a, b, w_star)
+    w0 = np.zeros((10, 6))
+    lip = L * L
+    configs = [
+        ("GD (ℓ₂)", "#1f77b4", lambda gg: gg, 1.5 / lip),
+        ("signSGD (ℓ∞)", "#2ca02c", lambda gg: np.sign(gg), None),
+        ("Muon (spectral)", "#d62728", lambda gg: -lmo_spectral(gg), None),
+    ]
+    for lab, col, direction_fn, lr in configs:
+        w = w0.copy()
+        gaps = [max(mat_obj(a, b, w) - f_star, 1e-30)]
+        # signSGD/Muon 用衰减步长
+        for t in range(1, 400):
+            gg = mat_grad(a, b, w)
+            d = direction_fn(gg)
+            if lr is None:
+                step = 0.5 / np.sqrt(t)
+                w = w - step * d
+            else:
+                w = w - lr * d
+            gaps.append(max(mat_obj(a, b, w) - f_star, 1e-30))
+        axes[1].semilogy(gaps, color=col, linewidth=1.5, label=lab)
+        results[f"matrix_{lab.split()[0]}_final"] = float(gaps[-1])
+    axes[1].set_xlabel("Iteration")
+    axes[1].set_ylabel(r"$f(W_k) - f^*$")
+    axes[1].set_title(r"Three norms on $\frac{1}{2}\|AW-B\|_F^2$, $\kappa(A)=50$")
+    axes[1].legend(fontsize=8)
+    axes[1].grid(True, alpha=0.3)
+
+    fig.suptitle("E32: steepest descent under ℓ₂ / ℓ∞ / spectral norm (LMO unification)",
+                 fontsize=12)
+    fig.tight_layout()
+    fig.savefig(FIG_DIR / "exp32_norm_steepest_descent.png", dpi=150)
+    plt.close(fig)
+    return results
 
 
 def run_all_extended() -> dict:
@@ -1063,4 +1286,6 @@ def run_all_extended() -> dict:
         "exp28_muon_tr": exp28_muon_on_trust_region(),
         "exp29_ode": exp29_nag_ode_vs_discrete(),
         "exp30_ns_basin": exp30_ns_convergence_basin(),
+        "exp31_equalization": exp31_muon_singular_value_equalization(),
+        "exp32_norms": exp32_steepest_descent_norms(),
     }

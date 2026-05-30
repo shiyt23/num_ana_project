@@ -174,6 +174,9 @@
 | `max_gap_diff` | 1.1368683772161603e-13 |
 | `cheb_final` | 1e-30 |
 | `hb_final` | 1e-30 |
+| `omega_inf_theory` | 1.669421487603306 |
+| `omega_50_numeric` | 1.6694214883153755 |
+| `omega_converged` | True |
 
 ## exp26_adam_cycle
 
@@ -227,25 +230,63 @@
 | 键 | 值 |
 |----|-----|
 | `basin_upper_bound_theory` | 1.7320508075688772 |
-| `n_div_above_sqrt3` | 11 |
+| `contiguous_plus_basin_upper` | 1.7382352941176473 |
+| `all_below_sqrt3_converge_plus` | True |
+| `n_converge_plus` | 86 |
+| `n_converge_minus_wrong` | 21 |
+| `n_diverge` | 13 |
+| `wrong_sign_band` | [1.7382352941176473, 2.2323529411764707] |
+| `divergence_onset` | 2.2529411764705882 |
+| `note` | beyond sqrt3 the basin is fractal: -U / bounce-back +U / divergence |
+
+## exp31_equalization
+
+| 键 | 值 |
+|----|-----|
+| `muon_update_kappa_max` | 1.0000000000000013 |
+| `gd_update_kappa_at_1000` | 3162.277660168399 |
+| `muon_kappa_always_1` | True |
+
+## exp32_norms
+
+| 键 | 值 |
+|----|-----|
+| `euclidean_lmo_optimal` | True |
+| `euclidean_lmo_value` | -5.163105498726243 |
+| `euclidean_neg_dual_norm` | -5.163105498726243 |
+| `linf_lmo_optimal` | True |
+| `linf_lmo_value` | -26.848971785327713 |
+| `linf_neg_dual_norm` | -26.848971785327713 |
+| `spectral_lmo_optimal` | True |
+| `spectral_lmo_value` | -10.245269573209635 |
+| `spectral_neg_dual_norm` | -10.245269573209635 |
+| `matrix_GD_final` | 4.847750275863017 |
+| `matrix_signSGD_final` | 103.76044466587142 |
+| `matrix_Muon_final` | 0.4535300798339373 |
 
 ## exp4
 
 | 键 | 值 |
 |----|-----|
-| `kappa10_b1_0.9_b2_0.999_kappa_eff_final` | 62.027815362355284 |
-| `kappa10_b1_0.9_b2_0.999_kappa_eff_min` | 59.2557479666743 |
-| `kappa10_b1_0.0_b2_0.99_kappa_eff_final` | 16.70551682862275 |
-| `kappa10_b1_0.0_b2_0.99_kappa_eff_min` | 13.110582049593514 |
-| `kappa100_b1_0.9_b2_0.999_kappa_eff_final` | 178.42110589028803 |
-| `kappa100_b1_0.9_b2_0.999_kappa_eff_min` | 114.05938844711585 |
-| `kappa100_b1_0.0_b2_0.99_kappa_eff_final` | 1144.0455954293877 |
-| `kappa100_b1_0.0_b2_0.99_kappa_eff_min` | 114.05938844711555 |
-| `kappa1000_b1_0.9_b2_0.999_kappa_eff_final` | 1558.6645254206574 |
-| `kappa1000_b1_0.9_b2_0.999_kappa_eff_min` | 569.6688631253485 |
-| `kappa1000_b1_0.0_b2_0.99_kappa_eff_final` | 2048.8201015845007 |
-| `kappa1000_b1_0.0_b2_0.99_kappa_eff_min` | 883.5132716967903 |
-| `kappa_100_gd_eff` | 99.99999999999991 |
+| `kappa10_diag_adam_kappa_eff_final` | 6.80717490228068 |
+| `kappa10_diag_adam_kappa_eff_min` | 1.3826664283538295 |
+| `kappa10_diag_jacobi_kappa_eff` | 1.0000000000000004 |
+| `kappa10_dense_adam_kappa_eff_final` | 10.262780224475422 |
+| `kappa10_dense_adam_kappa_eff_min` | 9.212801050355388 |
+| `kappa10_dense_jacobi_kappa_eff` | 9.09344910081456 |
+| `kappa100_diag_adam_kappa_eff_final` | 11.8129760925371 |
+| `kappa100_diag_adam_kappa_eff_min` | 1.8583329518734408 |
+| `kappa100_diag_jacobi_kappa_eff` | 1.0000000000000004 |
+| `kappa100_dense_adam_kappa_eff_final` | 85.05830074693796 |
+| `kappa100_dense_adam_kappa_eff_min` | 82.81642491037066 |
+| `kappa100_dense_jacobi_kappa_eff` | 83.26640217145447 |
+| `kappa1000_diag_adam_kappa_eff_final` | 11.812976959838728 |
+| `kappa1000_diag_adam_kappa_eff_min` | 1.8583329574984062 |
+| `kappa1000_diag_jacobi_kappa_eff` | 1.0000000000000004 |
+| `kappa1000_dense_adam_kappa_eff_final` | 779.8427678828806 |
+| `kappa1000_dense_adam_kappa_eff_min` | 765.9799671918828 |
+| `kappa1000_dense_jacobi_kappa_eff` | 781.4523312527718 |
+| `kappa_100_gd_eff` | 100.00000000000067 |
 
 ## exp5
 
@@ -292,15 +333,15 @@
 | `Rotated dense A_kappa_10_gd_iter_1e6` | 39 |
 | `Rotated dense A_kappa_10_jacobi_iter_1e6` | None |
 | `Rotated dense A_kappa_10_adam_iter_1e6` | 158 |
-| `dense_kappa_10_jacobi_kappa_eff` | 15.806291610755736 |
+| `dense_kappa_10_jacobi_kappa_eff` | 9.09344910081456 |
 | `Rotated dense A_kappa_100_gd_iter_1e6` | 439 |
 | `Rotated dense A_kappa_100_jacobi_iter_1e6` | None |
 | `Rotated dense A_kappa_100_adam_iter_1e6` | 178 |
-| `dense_kappa_100_jacobi_kappa_eff` | 312.285404718884 |
+| `dense_kappa_100_jacobi_kappa_eff` | 83.26640217145447 |
 | `Rotated dense A_kappa_1000_gd_iter_1e6` | None |
 | `Rotated dense A_kappa_1000_jacobi_iter_1e6` | None |
 | `Rotated dense A_kappa_1000_adam_iter_1e6` | 376 |
-| `dense_kappa_1000_jacobi_kappa_eff` | 2397.882973066218 |
+| `dense_kappa_1000_jacobi_kappa_eff` | 781.4523312527718 |
 | `Diagonal A (Jacobi ideal)_kappa_10_gd_iter_1e6` | 31 |
 | `Diagonal A (Jacobi ideal)_kappa_10_jacobi_iter_1e6` | 1 |
 | `Diagonal A (Jacobi ideal)_kappa_10_adam_iter_1e6` | 153 |

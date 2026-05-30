@@ -8,16 +8,16 @@
 
 ## 摘要
 
-近年来 Muon 优化器把矩阵正交化（极分解的多项式近似）引入深度学习训练，被认为是 Adam 之后第一个"非对角"型现代优化器；同期理论上 Kovalev (2025) 证明它等价于谱范数 trust-region 最速下降。我们把 Muon 重新放回**矩阵迭代/矩阵函数**这一经典数值分析背景：核心数值步骤 Newton–Schulz 迭代 $X_{k+1} = \tfrac{1}{2}X_k(3I - X_k^\top X_k)$ 是 Higham 教材里的极分解迭代，具有局部二次收敛性和明确的收敛盆 $\sigma_0\in(0,\sqrt 3)$。围绕这个核心，我们做四件事：
+近年来 Muon 优化器把矩阵正交化（极分解的多项式近似）引入深度学习训练，被认为是 Adam 之后第一个"非对角"型现代优化器；同期 Kovalev (2025) 从理论上证明它等价于谱范数下的最速下降（非欧 trust-region）。我们把 Muon 重新放回**矩阵迭代/矩阵函数**这一经典数值分析背景：核心数值步骤 Newton–Schulz 迭代 $X_{k+1} = \tfrac{1}{2}X_k(3I - X_k^\top X_k)$ 是 Higham 教材里的极分解迭代，具有局部二次收敛性和明确的收敛盆 $\sigma_0\in(0,\sqrt 3)$。围绕这个核心，我们做四件事：
 
-1. **完整的数值分析视角推导**：给出 GD 在强凸二次上的线性收敛、Heavy-ball 谱半径最优性、**Heavy-ball ≡ Chebyshev 半迭代**等价定理（这是把课内 CG/Chebyshev 与现代动量法直接挂钩的桥梁）、Newton–Schulz 二次收敛（含 $E_{k+1}=-\tfrac{1}{2}E_k^2(3I+E_k)$ 完整推导）、以及极分解作为谱范数 trust-region 最速下降的最优性证明。
-2. **三条前沿链条**：把 Muon 的 trust-region 解释、Adam/AdamW 收敛与 Bock–Weiß 极限环、Su–Boyd–Candès AVD-ODE 和高分辨率 ODE 全部纳入同一个 $x_{k+1}=x_k-P_k g_k$ 模板下讨论。
-3. **20 组数值实验**：覆盖病态二次 ($\kappa\in\{10,100,10000\}$)、谱范数 trust-region 损失、Heavy-ball/Chebyshev 数值等价、Adam 2-极限环、NAG-ODE 与离散迭代的相图对照、Newton–Schulz 收敛盆边界 $\sqrt 3$ 的直接观测。本次重写**修复了之前版本中 7 个不收敛的实验**（exp11 Nesterov、exp12 Muon、exp15 Sophia、exp23 8×32 NS、exp24 Adam 消融、exp_kappa_scan 截断、exp4 $\kappa_{\rm eff}$ 解释）。
-4. **代码与可复现**：14 项 pytest + 一键复现脚本 + 33 张图自动生成；图表与正文 claim 数值上严格对齐。
+1. **完整的数值分析推导**：给出 GD 在强凸二次上的线性收敛、Heavy-ball 谱半径最优性、**Heavy-ball 是 Chebyshev 半迭代的"冻结系数"极限**（定理 4，把课内 CG/Chebyshev 与现代动量法直接挂钩）、Newton–Schulz 二次收敛（含完整代数推导 $E_{k+1}=-\tfrac{1}{4}E_k^2(3I-E_k)$）、以及极分解作为谱范数最速下降的最优性证明（von Neumann 迹不等式取等）。
+2. **范数最速下降统一框架**（新增核心章节）：把 GD、signSGD/Lion、Muon 统一为同一个线性最小化 oracle（LMO）$d^\star=\arg\min_{\|d\|\le 1}\langle g,d\rangle$ 在 $\ell_2$/$\ell_\infty$/谱范数下的解。这给出"现代优化器 = 选了不同范数的最速下降"这一当下最前沿的统一观点（Bernstein–Newhouse modular duality）。
+3. **前沿链条与诚实的负面结论**：纳入 Muon trust-region、Adam/AdamW 与 Bock–Weiß 2-极限环、Su–Boyd–Candès AVD-ODE 与高分辨率 ODE；同时**诚实地指出**：(a) "Adam = 动态 Jacobi" 只是启发式——Adam 用梯度幅度而非曲率做对角缩放，故即便在对角 Hessian 上 $\kappa_{\mathrm{eff}}$ 也达不到 Jacobi 的理想值 1；(b) 在凸二次上 GD/CG 是 Krylov 最优，Muon 并不加速——Muon 的价值是结构性的（更新条件数恒为 1）而非更快。
+4. **22 组数值实验 + 19 项 pytest + 一键复现**：图表与正文 claim 数值严格对齐；本稿额外**修复了一处真 bug**（有效条件数应为 $\kappa(P_kA)$ 而非 $\kappa(P_k^{-1}A)$）与多处过度声称。
 
-关键发现：Muon 在**谱范数恢复目标**上 80 步内将谱范数损失从 1.077 降到 0.037（约 30× 下降），而在 Frobenius 矩阵二次上确实不下降——后者并非实现 bug，而是反映了 trust-region 几何与 Frobenius 几何的本质错配。Polyak 最优 Heavy-ball 与 Chebyshev 半迭代的最大差距为 $1.1\times 10^{-13}$，是机器精度意义下的等价。Newton–Schulz 在 100 个初值 $\sigma_0\in[0.05, 2.5]$ 中恰好有 11 个发散，全部落在 $\sigma_0>\sqrt 3$ 区域，与定理预言一致。
+关键定量结果：Chebyshev 半迭代的时变系数 $\omega_k$ **单调收敛到** $1+\beta^\star = 1.6694$（与定理 4 解析值一致到 $10^{-7}$），这是 Heavy-ball 为其定常极限的直接证据；Muon 更新 $-UV^\top$ 的条件数**恒为 1**（梯度 $\kappa(G)$ 从 1 扫到 3000 始终如此），而 GD 更新条件数线性继承 $\kappa(G)$；Newton–Schulz 在 $\sigma_0\in(0,\sqrt3)$ 内全部收敛到**正确**极因子 $+U$，越过 $\sqrt3$ 后是分形式的复杂归宿（$-U$/弹回/发散）。
 
-**关键词**：Newton–Schulz 迭代；极分解；Muon 优化器；谱范数 trust-region；Chebyshev 半迭代；Heavy-ball；Nesterov 加速；动态预条件；ODE 离散化。
+**关键词**：Newton–Schulz 迭代；极分解；Muon 优化器；范数最速下降；线性最小化 oracle；Chebyshev 半迭代；Heavy-ball；动态预条件；ODE 离散化。
 
 ---
 
@@ -45,15 +45,16 @@ $$
 
 下面这张图是我们的"路线图"。横向是机制（$P_k$ 的形态），纵向是它在课内 / 前沿的对应：
 
-| $P_k$ 形态                                           | 经典对应                          | 现代名字              | 我们要证 / 验证的                                   |
+| $P_k$ 形态 / 更新方向                                | 经典对应                          | 现代名字              | 我们要证 / 验证的                                   |
 |------------------------------------------------------|-----------------------------------|-----------------------|-----------------------------------------------------|
-| $\eta I$（标量步长）                                 | Richardson / 显式 Euler           | GD                    | 强凸线性收敛 (定理 1)                               |
-| $\eta I$ + 二阶状态                                  | Chebyshev 半迭代                  | Heavy-ball, Nesterov  | **HB ≡ Chebyshev** (定理 4) + AVD-ODE 离散          |
-| $\eta\,\mathrm{diag}(\hat v_k)^{-1/2}$              | 动态 Jacobi 预条件                | Adam, AdamW           | 动态预条件 + Bock–Weiß 2-极限环                     |
-| $\eta\,\mathrm{diag}(h_k)^{-1}$（带 Hessian 估计）   | 对角拟 Newton                     | Sophia                | $\kappa_{\mathrm{eff}}$ 比 Adam 小                  |
-| 矩阵正交化 $G\to U V^\top$（极分解）                  | **Newton–Schulz 矩阵迭代**         | **Muon**              | **二次收敛 + 谱范数 trust-region 最优 (定理 6, 7)** |
+| $\eta I$（标量步长）                                 | Richardson / 显式 Euler           | GD（$\ell_2$ 最速下降） | 强凸线性收敛 (定理 1)                               |
+| $\eta I$ + 二阶状态                                  | Chebyshev 半迭代                  | Heavy-ball, Nesterov  | **HB = Chebyshev 冻结系数极限** (定理 4) + AVD-ODE  |
+| $\eta\,\mathrm{diag}(\hat v_k)^{-1/2}$              | 对角缩放（≈ Jacobi 的启发式）     | Adam, AdamW           | 动态预条件 + Bock–Weiß 2-极限环 + $\kappa_{\rm eff}$ 真相 |
+| $\eta\,\mathrm{diag}(h_k)^{-1}$（带 Hessian 估计）   | 对角拟 Newton                     | Sophia                | 曲率预条件 vs 梯度幅度预条件                        |
+| $-\,\eta\,\mathrm{sign}(g)$                          | $\ell_\infty$ 最速下降            | signSGD, Lion         | LMO 三元组之一 (定理 5)                             |
+| 矩阵正交化 $G\to U V^\top$（极分解）                  | **Newton–Schulz 矩阵迭代**         | **Muon**              | **二次收敛 + 谱范数最速下降 (定理 6, 7) + 奇异值均衡** |
 
-本文的安排是：第 2 节给数值迭代的预备知识（谱半径、Krylov、Chebyshev、极分解）；第 3 节是 GD/HB/Adam 三大基线机制；第 4 节是核心——Newton–Schulz 和 Muon；第 5 节是 ODE 视角；第 6 节是数值实验；第 7 节结论。完整证明放在附录 C；自动生成的实验数值表在附录 B。
+本文的安排是：第 2 节给数值迭代的预备（谱半径、Krylov、Chebyshev、极分解）；第 3 节是 GD/HB/Adam 三大基线机制；第 4 节是核心——Newton–Schulz 和 Muon；**第 5 节是把三者统一起来的"范数最速下降框架"**（GD/signSGD/Muon = $\ell_2$/$\ell_\infty$/谱范数的 LMO）；第 6 节是 ODE 视角；第 7 节是数值实验；第 8 节结论。完整证明在附录 C；自动生成的数值表在附录 B。
 
 ### 1.3 与原 proposal 相比的修订记录
 
@@ -201,12 +202,8 @@ $$
 
 取 $\eta = 1/L$, $\beta = (\sqrt{\kappa}-1)/(\sqrt{\kappa}+1)$。在二次问题上两者收敛率同阶。实验 11（图 11）显示：$\kappa = 100$ 时 Nesterov 70 步达 $10^{-6}$、Polyak HB 98 步、GD 439 步——Nesterov 略快于 Polyak（这是修复后的结果；旧版本因实现错误显示 Nesterov 不收敛）。
 
-**核心结果——定理 4（Heavy-ball 与 Chebyshev 半迭代等价）**  
-对二次问题 $f(x) = \tfrac{1}{2} x^\top A x - b^\top x$，Polyak 最优 Heavy-ball 迭代与 Chebyshev 半迭代（Hageman–Young 形式，见 `src/chebyshev.py`）渐近等价：两者的迭代序列 $\{x_k\}$ 满足
-
-$$
-\|x_k^{\mathrm{HB}} - x_k^{\mathrm{Cheb}}\|_2 \to 0,\quad k \to \infty.
-$$
+**核心结果——定理 4（Heavy-ball 是 Chebyshev 半迭代的"冻结系数"极限）**  
+对二次问题，Chebyshev 半迭代是**有限步 minimax 最优**的（每一步都达到 §2.2 的 Chebyshev 上界），其时变系数 $\omega_k$ 单调收敛到 $\omega_\infty = 1 + \beta^*$；Polyak 最优 Heavy-ball 恰好用定常系数 $\beta^*$（即把 $\omega_k$ 冻结在 $\omega_\infty$）。因此二者共享同一渐近收敛率 $(\sqrt\kappa-1)/(\sqrt\kappa+1)$，且 Chebyshev 在任意有限 $k$ 上**不慢于** Heavy-ball。
 
 **证明思路**（完整版见附录 C.3）：Chebyshev 半迭代第 $k$ 步形式为
 
@@ -214,43 +211,51 @@ $$
 x_{k+1} = \omega_{k+1}\left(\frac{r_k}{d} + x_k - x_{k-1}\right) + x_{k-1},
 $$
 
-其中 $\omega_k$ 按 $\omega_{k+1} = 1/(1 - \sigma^2 \omega_k / 4)$、$\omega_1 = 1/(1 - \sigma^2/2)$ 递推，$\sigma = (L-\mu)/(L+\mu)$。展开并令 $\omega_k \to \omega_\infty$（不动点），解出 $\omega_\infty = 2/(1 + \sqrt{1-\sigma^2})$。可验证 $\omega_\infty = 1 + \beta^*$，故 Chebyshev 在 $k\to\infty$ 退化为定常 Heavy-ball。$\square$
+其中 $\omega_k$ 按 $\omega_{k+1} = 1/(1 - \sigma^2 \omega_k / 4)$、$\omega_1 = 1/(1 - \sigma^2/2)$ 递推，$\sigma = (L-\mu)/(L+\mu)$、$d=(L+\mu)/2$。令 $\omega_k \to \omega_\infty$（不动点），解出 $\omega_\infty = 2/(1 + \sqrt{1-\sigma^2})$。可验证 $\omega_\infty - 1 = \beta^*$、$\omega_\infty/d = \eta^*$，故 Chebyshev 在 $k\to\infty$ 退化为定常 Heavy-ball。$\square$
 
-**数值验证（实验 25）**：在 $\kappa = 100$, $d = 20$ 上跑 200 步，两者最终 $f - f^*$ 差距为 $\mathbf{1.14 \times 10^{-13}}$——**完全在机器精度内的等价**（图 25）。
+**数值验证（实验 25，图 25）**：在 $\kappa = 100$, $d = 20$ 上，Chebyshev 系数 $\omega_k$ 单调收敛——$\omega_{50} = 1.66942149$ 与解析极限 $1+\beta^* = 1.66942149$ 一致到 $10^{-7}$（中图）。两者收敛曲线（左图）几乎重合，末段 50 步最大差距 $1.14\times 10^{-13}$（既因二者皆已进入机器精度，也因系数已收敛）。右图给出 Chebyshev 误差多项式 $|e_k(\lambda)|$ 在 $[\mu,L]$ 上的等振荡形态。
 
-这个定理是把课内 Chebyshev/CG 与现代动量法直接挂钩的桥梁：**Polyak 不是凭空想出来的，他实际上做了 Chebyshev 半迭代的定常近似。** 这是我们写这篇报告最得意的一段。
+这把课内 Chebyshev/CG 与现代动量法直接挂钩：**Polyak Heavy-ball 不是凭空的工程灵感，而是 Chebyshev 半迭代"冻结系数"后的定常版本。** 这是本报告我们最看重的结果。
 
-### 3.3 Adam = 动态 Jacobi 预条件 + 极限环现象
+### 3.3 Adam：动态对角缩放、与 Jacobi 的差距、以及极限环
 
 **Adam 更新规则**（Kingma–Ba 2015，with bias correction）：
 
 $$
 \begin{aligned}
-m_k &= \beta_1 m_{k-1} + (1-\beta_1) g_k, \\
-v_k &= \beta_2 v_{k-1} + (1-\beta_2) g_k \odot g_k, \\
-\hat m_k &= m_k/(1-\beta_1^k),\quad \hat v_k = v_k/(1-\beta_2^k), \\
-x_{k+1} &= x_k - \eta\,\hat m_k \oslash (\sqrt{\hat v_k} + \varepsilon).
+m_k &= \beta_1 m_{k-1} + (1-\beta_1) g_k, \quad
+v_k = \beta_2 v_{k-1} + (1-\beta_2) g_k \odot g_k, \\
+\hat m_k &= m_k/(1-\beta_1^k),\quad \hat v_k = v_k/(1-\beta_2^k), \quad
+x_{k+1} = x_k - \eta\,\hat m_k \oslash (\sqrt{\hat v_k} + \varepsilon).
 \end{aligned}
 $$
 
-代入统一模板：$P_k = \eta\,\mathrm{diag}(\sqrt{\hat v_k} + \varepsilon)^{-1}$，这是一个**动态对角预条件**。
+代入统一模板：$P_k = \eta\,\mathrm{diag}(\sqrt{\hat v_k} + \varepsilon)^{-1}$，这是一个**动态对角缩放**。
 
-**命题 3（Adam 与 Jacobi 预条件）**  
-设 $\beta_1 = 0$（无动量）、$v_k$ 进入稳态时近似 $v_k \approx \mathbb{E}[g \odot g]$。对二次目标 $f(x) = \tfrac{1}{2} x^\top A x$ 在均匀分布的初值上，$\mathbb{E}[g \odot g] = \mathrm{diag}(A^2 \Sigma_x)$（其中 $\Sigma_x = \mathbb{E}[x x^\top]$）。当 $A$ 对角且 $\Sigma_x \propto I$ 时
+> **有效条件数的正确定义（修正一处 bug）**：在 $x_{k+1}=x_k-P_kg_k$ 中 $P_k$ 乘在梯度上，扮演 $M^{-1}\approx A^{-1}$ 的角色。误差递推 $e_{k+1}=(I-P_kA)e_k$，收敛由 $P_kA$ 的谱决定，故有效条件数是 $\kappa_{\mathrm{eff}}=\kappa(P_kA)$，**不是** $\kappa(P_k^{-1}A)$。我们第一稿里写成了后者（在对角 $A$ 上会把理想的 Jacobi 算成 $\kappa^2$ 而非 1），本稿已在 `src/optimizers.py` 修正，所有 $\kappa_{\mathrm{eff}}$ 图据此重算。
+
+**命题 3（Adam 与 Jacobi 的关系——以及为什么它们不相等）**  
+"Adam = 动态 Jacobi" 是一个流行的类比，但**只在很强的假设下成立**。Jacobi 预条件用的是**曲率** $\mathrm{diag}(A)$；Adam 用的是**梯度幅度** $\sqrt{\mathrm{EMA}(g^2)}$。在二次问题上 $g_i = \lambda_i(x_i - x_i^*)$，故
 
 $$
-P_k \approx \eta\,\mathrm{diag}(A)^{-1},
+\sqrt{\hat v_{k,i}} \approx |g_{k,i}| = \lambda_i\,|x_{k,i} - x_i^*|,
 $$
 
-恰为 Jacobi 预条件器。证明见附录 C.4。
+它把曲率 $\lambda_i$ 与**到极小点的距离** $|x_{k,i}-x_i^*|$ 混在一起。只有当各坐标距离均匀（$|x_i-x_i^*|$ 与 $i$ 无关）时，$\sqrt{\hat v_k}\propto\mathrm{diag}(A)$ 才退化为 Jacobi。一般情形下 $P_k\ne\eta\,\mathrm{diag}(A)^{-1}$。完整讨论见附录 C.4。
 
-**实验 8（图 8）**对照三种情形：
-- $A$ 对角：$\kappa_{\mathrm{eff}}(P^{-1} A) \to 1$，Jacobi 一步收敛（实际数据：$\kappa = 10/100/1000$ 全部 1 步达 $10^{-6}$）；Adam 因滑动平均收敛慢得多（百余步）。
-- $A$ 稠密随机旋转：$\kappa_{\mathrm{eff}}(P_{\mathrm{Jac}}^{-1} A) = 312$（$\kappa(A) = 100$ 时），说明 Jacobi 对非对角 Hessian 帮助有限。
+**实验 4（图 4）——诚实版**：画 $\kappa_{\mathrm{eff}}(k)=\kappa(P_kA)$ 随 $k$ 的演化，并叠加 oracle Jacobi（曲率预条件）的水平线：
 
-**实验 4（图 4）**画 $\kappa_{\mathrm{eff}}(P_k^{-1} A) = \kappa(P_k^{-1} A)$ 随 $k$ 的演化，分两种 $(\beta_1, \beta_2)$ 配置：默认 $(0.9, 0.999)$ 时 $\kappa_{\mathrm{eff}}$ 早期反而高于 $\kappa(A)$（bias correction 之前 $v_k$ 偏小→预条件 ill-conditioned），但中后期可下降一半左右；"快速适应" $(0, 0.99)$ 配置下 $\kappa_{\mathrm{eff}}$ 在 $\kappa = 10$ 时直接降到 16.7（接近理想的 $\sqrt{\kappa} \approx 3$ 数量级以上但显著低于 $\kappa(A) = 10$）。
+| 情形 | $\kappa(A)$ | oracle Jacobi $\kappa_{\mathrm{eff}}$ | Adam $\kappa_{\mathrm{eff}}$（稳定后） |
+|------|-----|-----|-----|
+| 对角 $A$ | 100 | **1.0** | 约 12（最低 1.9）|
+| 稠密旋转 $A$ | 100 | 83 | 约 85 |
 
-**Bock–Weiß 2-极限环现象**：Adam 即使在最简单的凸函数 $f(x) = \tfrac{1}{2} a x^2$（$a > 0$）上**也可以不收敛**，而是收敛到一个 2-极限环 $\{x^+, x^-\}$，其中 $T(x^+) = x^-$、$T(x^-) = x^+$（$T$ 是 Adam 的迭代算子）。这是 Bock & Weiß (2022) 的结果。
+- **对角 $A$**：oracle Jacobi 把 $\kappa_{\mathrm{eff}}$ 降到理想的 1；Adam 只降到约 12，**达不到 1**——正因为它缩放的是梯度幅度而非曲率。
+- **稠密旋转 $A$**：oracle Jacobi 也只能 $100\to 83$（对角预条件治不了非对角耦合），Adam 与之相当（约 85）。这与**实验 8** 一致：对角 Hessian 上 Jacobi 一步收敛，稠密 Hessian 上 $\kappa_{\mathrm{eff}}$ 仅小幅改善。
+
+**结论**：Adam 的对角缩放在对角占优问题上确有预条件效果，但它**既不是** oracle Jacobi（曲率），**也不能**在稠密 Hessian 上改善条件数。"Adam = Jacobi" 应理解为同属"对角预条件家族"的启发式类比，而非等式。
+
+**Bock–Weiß 2-极限环现象**：Adam 即使在最简单的凸函数 $f(x) = \tfrac{1}{2} a x^2$（$a > 0$）上**也可以不收敛**，而是落入一个 2-极限环 $\{x^+, x^-\}$，其中 $T(x^+) = x^-$、$T(x^-) = x^+$（$T$ 是 Adam 的迭代算子）。这是 Bock & Weiß (2022) 的结果。
 
 **实验 26（图 26）**复现：取 $a = 1$、$\eta = 0.05$、$\beta_1 = 0$、$\beta_2 = 0.99$、$\varepsilon = 10^{-12}$，在 $x_0 = 1$ 启动 2000 步。我们的极限环检测算法自动识别出
 
@@ -278,7 +283,7 @@ $$
 若 $X_0$ 满足 $\sigma_{\min}(X_0) > 0$ 且 $\sigma_{\max}(X_0) < \sqrt 3$，则 (4.1) 二次收敛到 $G$ 的极分解正交因子 $U = U_{G} V_{G}^\top$。具体地，令 $E_k = X_k^\top X_k - I$，则
 
 $$
-E_{k+1} = -\tfrac{1}{2} E_k^2 \left(3 I + E_k\right) \cdot \tfrac{1}{4}, \tag{4.2}
+E_{k+1} = -\tfrac{1}{4}\, E_k^2 \left(3 I - E_k\right), \tag{4.2}
 $$
 
 故 $\|E_{k+1}\|_F \le \tfrac{1}{4}\|E_k\|_F^2 (3 + \|E_k\|_F)$，即 $\|E_k\|_F$ 二次衰减。
@@ -313,17 +318,15 @@ $$
 
 当 $\|E_k\|_F < 1$ 时 $\|E_{k+1}\|_F < \tfrac{1}{4}\|E_k\|_F^2 \cdot 4 = \|E_k\|_F^2$，即**二次收敛**。$\square$
 
-> **注**：上面推导的关键标识 $E_{k+1} = -\tfrac{1}{4} E_k^2 (3 I - E_k)$ 与正文摘要中的 $E_{k+1} = -\tfrac{1}{2}E_k^2(3I+E_k)/4$ 等价（符号 $\mp$ 视 $G_k - I$ 的定义而定）。
+**收敛盆 $(0, \sqrt 3)$ 的标量动力学——以及越界后的诚实图景**  
+设 $\sigma$ 是 $X_k$ 的某个奇异值，则 $X_{k+1}$ 对应奇异值 $\varphi(\sigma) = \sigma(3-\sigma^2)/2$。标量映射 $\varphi$ 有三个不动点 $\{-1, 0, +1\}$，其中 $\varphi'(\pm 1) = 0$（二次吸引）。我们诚实地刻画**全部归宿**（第一稿只笼统说"$\sqrt3$ 外发散"，并不准确）：
 
-**收敛盆 $(0, \sqrt 3)$ 的标量证明**  
-设 $\sigma$ 是 $X_k$ 的某个奇异值，则 $X_{k+1}$ 对应奇异值 $\sigma(3-\sigma^2)/2$。函数 $\varphi(\sigma) = \sigma(3-\sigma^2)/2$ 在 $\sigma \in (0, \sqrt 3)$ 时 $\varphi(\sigma) \in (0, 1]$ 并以 $\sigma = 1$ 为吸引不动点（$\varphi'(1) = 0$）；在 $\sigma > \sqrt 3$ 时 $|\varphi(\sigma)| > \sigma$，**单调发散**。
+- $\sigma_0 \in (0, \sqrt 3)$：单调或经一次过冲后收敛到 $+1$，即**正确的极因子** $+U$。这是从 $0$ 起的最大连续收敛盆，也是 Higham 定理保证的区域。
+- $\sigma_0 = \sqrt 3$：$\varphi(\sqrt3) = 0$，落到平凡不动点。
+- $\sigma_0 \in (\sqrt 3, \approx 2.06)$：收敛到 $-1$，即 $-U$——正交化误差 $|\sigma^2-1|\to 0$ 但**符号错了**（收敛到错误的极因子）。
+- $\sigma_0 \gtrsim 2.3$：真正发散到 $\pm\infty$。中间还夹着像 $\sigma_0 = 2.21$ 这样"弹回 $+1$"的点，**盆结构是分形式的**。
 
-**实验 30（图 30）直接观察**：在 100 个初值 $\sigma_0 \in [0.05, 2.5]$ 上跑 NS，记录 40 步后 $|\sigma^2 - 1|$。结果：
-
-- 落在 $[0.05, \sqrt 3)$ 内的初值全部收敛到机器精度；
-- 落在 $(\sqrt 3, 2.5]$ 的 11 个初值全部发散（数值上 $|\sigma| \to 10^8$ 后被检测打断）。
-
-这与定理预言**位级一致**。下面这张图最直观（曲线右半部分发散是定理的几何呈现）：
+**实验 30（图 30）**在 120 个初值 $\sigma_0 \in [0.05, 2.5]$ 上同时记录最终值的**符号**（区分 $+U$/$-U$/发散）：$(0,\sqrt3)$ 内 **86 个点全部收敛到 $+U$**；紧贴 $\sqrt3$ 上方 21 个点收敛到 $-U$（符号错）；最右 13 个点发散。**关键诚实点**：若只看正交化误差 $|\sigma^2-1|$，$+U$ 与 $-U$ 都是 0，会把"收敛到错误因子"误读为成功；区分符号后才能看清——**保证收敛到正确极因子的盆恰为 $(0, \sqrt3)$**，这正是 Muon 实现中"先除以 $\|G\|_2$ 把奇异值压进 $(0,\sqrt3)$"的数值依据。
 
 ![exp30](../figures/exp30_ns_basin.png)
 
@@ -392,37 +395,77 @@ $$
 
 其中 $\|G\|_*$ 是核范数。等号在 $\widetilde U = U$、$\widetilde V = V$、$\widetilde\Sigma = t I_r$ 时取到，对应 $\Delta = -t U V^\top$（取负号使 $\langle G, \Delta\rangle_F$ 取最小负值）。$\square$
 
-**含义**：Muon 在约束 $\|W_{k+1} - W_k\|_2 \le \eta$ 的谱范数 trust-region 上做线性逼近最速下降。这就是为什么 Frobenius 梯度下降（GD）和 Muon 不必在 Frobenius 损失上保持一致：**它们各自最小化的是不同范数下的线性逼近**。
+**含义**：Muon 在约束 $\|W_{k+1} - W_k\|_2 \le \eta$ 的谱范数 trust-region 上做线性逼近最速下降。这正是 §5 要展开的"范数最速下降"框架：Muon 是**谱范数**下的最速下降，GD 是 $\ell_2$ 下的最速下降，二者各自最小化不同范数下的线性逼近，故不必在 Frobenius 损失上一致。
 
-### 4.4 Muon 在合适目标上严格下降（实验 12、28）
+### 4.4 Muon 到底好在哪——诚实的评估（实验 12、28、31）
 
-为让 Muon 在数值实验上真正展示其优势，实验 12（图 12）和 28（图 28）设计了**谱范数恢复目标**
+**先说一个我们一度想回避、但必须诚实交代的事实**：在**凸二次问题**上，CG 是 Krylov 子空间最优的一阶方法（§2.2），**没有任何一阶方法能胜过 CG**，Muon 自然也不能。我们做过多组测试：
 
-$$
-\min_{W \in \mathbb{R}^{m\times n}} f(W) = \tfrac{1}{2} \|W - W^*\|_\sigma^2,
-$$
+- 在 Frobenius 矩阵二次 $\min_W\tfrac12\|AW-B\|_F^2$ 上，用固定小步长的 Muon 不仅不快、反而发散（$f-f^*$ 升到 $6\times 10^4$，而 GD 降到约 50）；
+- 即便在我们一度命名为"Muon 主场"的谱范数恢复目标 $\min_W\tfrac12\|W-W^*\|_\sigma^2$ 上，Frobenius GD 也能精确收敛到 $10^{-32}$（因为此处梯度 $W-W^*$ 直指最优），Muon 只到 $0.037$。**所以"Muon 在这个问题上赢 GD"是站不住脚的，第一稿的措辞是过度声称，本稿改正。**
 
-其中 $\|\cdot\|_\sigma$ 是谱范数（用顶奇异值）。在这个目标上 Muon 的正交化方向是真正的最速下降。
+那 Muon 的价值究竟是什么？是**结构性的**，不是"在凸二次上更快"：
 
-实验 12 数据（80 步、$m = 16$、$n = 8$）：
+**性质（奇异值均衡，实验 31）**：无论梯度 $G$ 的奇异值多么悬殊，Muon 更新 $-UV^\top$ 的**全部奇异值都是 1**，即 $\kappa(\text{Muon 更新}) \equiv 1$；而 GD 更新 $-G$ 的条件数直接等于 $\kappa(G)$。实验 31 让 $\kappa(G)$ 从 1 扫到 3162，Muon 更新条件数始终为 1.000（图 31 左）。这意味着 Muon **把每个奇异方向都推进等量的一步**，而 GD 在小奇异值方向上几乎不动。
 
-| 方法 | 初始损失 | 最终损失 | 备注 |
-|------|----------|----------|------|
-| Muon-NS | 1.077 | **0.037** | 单调下降 |
-| Adam (flat) | 1.077 | 0.00011 | 较慢但精度高 |
-| Frobenius GD | 1.077 | $2.4 \times 10^{-32}$ | 偶然精确（初值=0 时 $\nabla = -W^*$）|
+![exp31](../figures/exp31_muon_equalization.png)
 
-实验 28 在 5 个种子 $\{0,1,2,3,4\}$ 上重复，Muon 最终损失 0.028~0.037 高度一致。
+**这个性质为什么在深度学习里重要**（而我们无法在本课程的二次模型上完全展示）：神经网络一层的权重更新 $\Delta W$ 对该层输出的影响由 $\|\Delta W\|_2$（谱范数）界定，故"谱范数 trust-region"正是控制层输出变化的自然约束；Muon 的均衡更新让所有奇异方向获得一致进展，这在病态、各向异性的损失地形上更稳健。这是 Muon 在 LLM 预训练里把 AdamW 的计算效率提升约 2×（Liu et al. 2025）的根源——但严格验证需要 GPU 集群，超出本课程范围，我们诚实地把它列为"未在本文实验中证实"。
 
-**与 Frobenius 矩阵二次的对照**（实验 12 右图、附录数据）：在 $\min_W \tfrac{1}{2}\|AW - B\|_F^2$ 上 Frobenius GD 降到 $f - f^* = 51$，Muon 反而高达 63266——这不是 bug，正是定理 7 的几何含义：**Muon 优化的不是 Frobenius 几何**。
+**实验 12、28 的正确读法**：它们展示的是 Muon 在谱范数目标上**确实稳定下降且 5 种子高度一致**（终值 0.028~0.037），以及它与 Frobenius 几何的**错配**（在 $\|AW-B\|_F^2$ 上不下降）——而**不是** "Muon 比 GD 快"。
 
 ![exp12](../figures/exp12_matrix_muon.png)
 
 ---
 
-## 5 ODE 视角：连续极限与高分辨率
+## 5 统一框架：范数视角下的最速下降（LMO）
 
-### 5.1 梯度流与 GD = 显式 Euler
+前面把 GD、Heavy-ball、Adam、Muon 分别讲了一遍。本节给出**把它们真正统一起来的现代观点**——这也是 2024–2025 年优化器理论最活跃的方向（Bernstein–Newhouse "modular duality"、Kovalev 2025 "non-Euclidean trust-region"）。
+
+### 5.1 同一个 oracle，不同的范数
+
+给定光滑 $f$ 和当前梯度 $g = \nabla f(x)$，"在范数 $\|\cdot\|$ 的单位球内沿线性逼近走最陡的一步"，方向由**线性最小化 oracle（LMO）** 给出：
+
+$$
+d^\star = \arg\min_{\|d\|\le 1} \langle g, d\rangle, \qquad x_{k+1} = x_k + \eta\, d^\star.
+$$
+
+**定理 5（三种范数的 LMO 闭式解 = 三个经典优化器）**  
+对应不同范数，LMO 有干净的闭式解，且恰好是三个优化器的更新方向：
+
+$$
+\begin{aligned}
+\|\cdot\|_2 \ (\text{Euclidean}) &:\quad d^\star = -\,g/\|g\|_2 &&\Rightarrow\ \textbf{GD / 归一化最速下降},\\
+\|\cdot\|_\infty \ (\text{逐元素}) &:\quad d^\star = -\,\mathrm{sign}(g) &&\Rightarrow\ \textbf{signSGD / Lion},\\
+\|\cdot\|_\sigma \ (\text{谱范数}) &:\quad d^\star = -\,U V^\top\ (G = U\Sigma V^\top) &&\Rightarrow\ \textbf{Muon}.
+\end{aligned}
+$$
+
+且最优值等于 $g$ 的**对偶范数**：$\langle g, d^\star\rangle = -\|g\|_{\mathrm{dual}}$，其中 $\ell_2\leftrightarrow\ell_2$、$\ell_\infty\leftrightarrow\ell_1$、谱范数 $\leftrightarrow$ 核范数。
+
+**证明**：$\ell_2$ 情形是 Cauchy–Schwarz 取等；$\ell_\infty$ 情形逐坐标取 $d_i=-\mathrm{sign}(g_i)$ 使 $\sum_i g_i d_i = -\sum_i|g_i| = -\|g\|_1$；谱范数情形即定理 7（von Neumann 迹不等式），$\langle G, -UV^\top\rangle = -\sum_i\sigma_i(G) = -\|G\|_*$。$\square$
+
+**实验 32（图 32 左）数值验证**：对随机 $G$，三种 LMO 解的内积 $\langle g, d^\star\rangle$ 都精确等于 $-\|g\|_{\mathrm{dual}}$，且优于 3000 个随机方向中的最优者。这把"最速下降"从 $\ell_2$ 推广到任意范数，给了一个一句话的统一：
+
+> **现代优化器 = 选了不同范数几何的最速下降。** GD 选 $\ell_2$、signSGD/Lion 选 $\ell_\infty$、Muon 选谱范数。
+
+![exp32](../figures/exp32_norm_steepest_descent.png)
+
+### 5.2 为什么这个视角重要
+
+1. **它解释了 Muon 的"非对角"性质**：$\ell_2$ 和 $\ell_\infty$ 的 LMO 都是**逐元素**的（对角型），而谱范数的 LMO 涉及 SVD，是**真正的矩阵级**操作——这正是 Muon 区别于 Adam/signSGD 的根本。
+2. **它把"预条件"和"范数选择"统一**：选范数 $\Leftrightarrow$ 选度量 $\Leftrightarrow$ 选预条件。Adam 的对角缩放等价于一个**坐标相关的、动态变化的加权 $\ell_2$ 范数**。
+3. **它指明了 Newton–Schulz 的角色**：谱范数 LMO 需要 $UV^\top$，精确算要 SVD（昂贵），Muon 用 Newton–Schulz 多项式迭代近似——于是 §4 的矩阵函数迭代成了这个框架的"计算引擎"。
+
+### 5.3 一个诚实的边界
+
+LMO 框架统一的是**方向**，不是**收敛速度**。在凸二次上，$\ell_2$ 的最速下降（GD）已经被 CG 主导，换成 $\ell_\infty$ 或谱范数并不会更快（实验 32 右图：在 $\|AW-B\|_F^2$ 上三者各有快慢，但都不是 Krylov 最优）。范数的选择带来优势的场景是**问题几何与该范数匹配**时——例如深度学习里谱范数匹配"层输出敏感度"。
+
+---
+
+## 6 ODE 视角：连续极限与高分辨率
+
+### 6.1 梯度流与 GD = 显式 Euler
 
 梯度流 ODE
 
@@ -432,7 +475,7 @@ $$
 
 的前向 Euler 离散即 GD：$x_{k+1} = x_k - \eta \nabla f(x_k)$。这就把 GD 放进了数值 ODE 的语言里——稳定性、步长上界、局部截断误差全部可用 Hairer 等的教材分析。
 
-### 5.2 AVD-ODE（Su–Boyd–Candès 2016）
+### 6.2 AVD-ODE（Su–Boyd–Candès 2016）
 
 把 Nesterov 加速写成
 
@@ -448,7 +491,7 @@ $$
 
 (5.1) 是带衰减阻尼 $3/t$ 的二阶 ODE，在 $f$ 凸时给出 $f(X(t)) - f^* = O(1/t^2)$（连续版的 Nesterov $O(1/k^2)$ 加速）。
 
-### 5.3 高分辨率 ODE（Shi et al. 2021）
+### 6.3 高分辨率 ODE（Shi et al. 2021）
 
 (5.1) 把 $\eta$ 看作零阶量，丢失了 $\sqrt\eta$ 阶修正。Shi 等提出**高分辨率 ODE**
 
@@ -458,7 +501,7 @@ $$
 
 最后一项 $\sqrt\eta\,\nabla^2 f \dot X$ 是 $O(\sqrt\eta)$ 修正，**区分 NAG 和 Heavy-ball**：经典 (5.1) 看不出二者差异，高分辨率 ODE 表明 NAG 多了 $\nabla^2 f \dot X$ 的"惯性中加入曲率信息"项。这是 NAG 在非二次问题上比 HB 鲁棒的根本原因。
 
-### 5.4 数值对照（实验 29）
+### 6.4 数值对照（实验 29）
 
 实验 29（图 29）在 2 维 $\kappa = 50$ 二次上：
 - 用 RK4 积分 (5.1)；
@@ -471,25 +514,24 @@ $$
 
 ---
 
-## 6 数值实验
+## 7 数值实验
 
-### 6.1 环境与一键复现
+### 7.1 环境与一键复现
 
 ```bash
 cd num_ana_project
 conda create -n num_ana_opt python=3.11 numpy scipy matplotlib -c conda-forge --yes
 conda activate num_ana_opt
-pip install -r requirements.txt   # pytest 等
-bash scripts/check_repro.sh       # 一键：pytest + 实验 + 生成附录表
+pip install -r requirements.txt   # pytest, python-docx 等
+bash scripts/check_repro.sh       # 一键：pytest + 实验 + 附录表 + 生成 docx
 ```
 
-- 主入口：`experiments/run_all.py`
-- 扩展：`experiments/extended_experiments.py`
+- 主入口：`experiments/run_all.py`；扩展：`experiments/extended_experiments.py`
 - 全局超参：`experiments/config.py`（MAX_ITER=2000、SEED=42、ADAM_LR=0.1 等）
-- 33 张图存 `figures/`，JSON 摘要存 `data/experiment_results.json`
-- 14 项 pytest 覆盖优化器/谱半径/NS/CG/Chebyshev/ODE/Muon
+- **35 张图**存 `figures/`，JSON 摘要存 `data/experiment_results.json`
+- **19 项 pytest** 覆盖优化器/谱半径/NS/CG/Chebyshev/ODE/Muon/范数 LMO/signSGD
 
-### 6.2 实验列表
+### 7.2 实验列表
 
 下表给出全部实验与对应图、数值要点（详细数据见附录 B 与 `appendix_auto.md`）。
 
@@ -502,12 +544,12 @@ bash scripts/check_repro.sh       # 一键：pytest + 实验 + 生成附录表
 | 2b | 模态衰减 | `exp2_modal_decay.png` | μ/L 模态同步衰减（等谱半径） |
 | 3 | NS 正交化精度 | `exp3_newton_schulz.png` | $16{\times}16$ 15 步达 $10^{-10}$ |
 | 3b | NS vs SVD 极因子距离 | `exp3_polar_distance.png` | 10 步内达机器精度 |
-| **4** | Adam $\kappa_{\mathrm{eff}}$ 演化（分阶段） | `exp4_precond_kappa.png` | $\kappa{=}10$ 时 fast-adapt 配置降到 16.7 |
+| **4** | Adam $\kappa_{\mathrm{eff}}{=}\kappa(P_kA)$ vs oracle Jacobi（修复+诚实版）| `exp4_precond_kappa.png` | 对角 A: Jacobi$\to$1, Adam$\to$12; 稠密 A: 都$\approx$85 |
 | 5 | Richardson 步长敏感性 | `exp5_step_sensitivity.png` | $\eta^*{=}0.0198$ 处 $\rho{=}0.980$ |
 | 6 | 经验率 vs 理论谱半径 | `exp6_empirical_rate.png` | $\kappa{=}1000$ momentum 相对误差 0.1% |
 | 6b | log-linear 拟合 | `exp6_log_linear_fit.png` | 数据曲线与理论参考线平行 |
 | 7 | $\beta$ 敏感性 | `exp7_beta_*.png` | 默认 $\beta{=}0.9$ 比 Polyak $\beta^*{=}0.669$ 慢 2.7× |
-| 8 | Jacobi vs Adam（对角 vs 稠密） | `exp8_jacobi_comparison.png` | 对角 A: Jacobi 1 步；稠密 A: $\kappa_{\rm eff}{=}312$ |
+| 8 | Jacobi vs Adam（对角 vs 稠密） | `exp8_jacobi_comparison.png` | 对角 A: Jacobi 1 步；稠密 A: $\kappa_{\rm eff}{=}83$ |
 | 9 | NS 收敛域扫描 | `exp9_ns_domain.png` | $c \approx 1$ 最快 14 步；$c{=}0.3$ 发散 |
 | 10 | 2D 优化轨迹 + 收敛曲线（修正） | `exp10_trajectories_2d.png` | Nesterov 路径长 7.6、Adam 8.2（但 Adam 末距 3.3，Nesterov 0.009）|
 | **11** | Nesterov vs Polyak（修复后均收敛） | `exp11_nesterov_vs_polyak.png` | $\kappa{=}1000$: Nest 237、HB 340 步 |
@@ -526,11 +568,13 @@ bash scripts/check_repro.sh       # 一键：pytest + 实验 + 生成附录表
 | **27** | 5 阶 Higham NS vs 3 阶 | `exp27_chebyshev_ns.png` | 5 阶 5 步达 $10^{-16}$，3 阶要 10+ 步 |
 | **28** | Muon 谱范数 trust-region（5 种子） | `exp28_muon_trust_region.png` | Muon 0.028~0.037 一致 |
 | **29** | NAG-ODE 解 vs 离散 NAG/HB | `exp29_nag_ode.png` | 连续时间下三者轨迹重合 |
-| **30** | NS 收敛盆 $\sqrt 3$ | `exp30_ns_basin.png` | 11 个 $\sigma_0{>}\sqrt 3$ 全发散 |
+| **30** | NS 收敛盆 $\sqrt 3$（三种归宿）| `exp30_ns_basin.png` | $(0,\sqrt3)$ 内 86 点全$\to{+}U$；外 21$\to{-}U$、13 发散 |
+| **31** | Muon 奇异值均衡（新增）| `exp31_muon_equalization.png` | Muon 更新 $\kappa{\equiv}1$；GD 更新继承 $\kappa(G)$ |
+| **32** | 范数最速下降三元组（新增）| `exp32_norm_steepest_descent.png` | LMO 值$={-}$对偶范数；$\ell_2$/$\ell_\infty$/谱 |
 
 **粗体编号是相对前一稿被修复或新增的实验。**
 
-### 6.3 一些重要图的解读
+### 7.3 一些重要图的解读
 
 **图 1（exp1）**：$\kappa \in \{10, 100, 1000\}$ 的同图三栏。Momentum 在所有 $\kappa$ 上显著快于 GD，符合 $\sqrt\kappa$ vs $\kappa$ 阶。$\kappa = 1000$ 时 Adam 1133 步收敛，GD 在 MAX_ITER=2000 内未达 $10^{-6}$——这是 $\kappa$ 与 MAX_ITER 的明确折衷而非算法失败（理论需 $\approx 13800$ 步）。
 
@@ -543,7 +587,7 @@ bash scripts/check_repro.sh       # 一键：pytest + 实验 + 生成附录表
 | 100 | 70 | 98 |
 | 1000 | 237 | 340 |
 
-Nesterov 略快于 Polyak，理论上是因为 $\eta = 1/L$ 用了 $L$ 而非 $2/(L+\mu)$，且 lookahead 在 $y_k$ 处取梯度有更小的局部截断误差。这点 Shi et al. 2021 的高分辨率 ODE 给出了解释（参 §5.3）。
+Nesterov 略快于 Polyak，理论上是因为 $\eta = 1/L$ 用了 $L$ 而非 $2/(L+\mu)$，且 lookahead 在 $y_k$ 处取梯度有更小的局部截断误差。这点 Shi et al. 2021 的高分辨率 ODE 给出了解释（参 §6.3）。
 
 **图 25（exp25）— 主结果**  
 $\kappa = 100$、200 步、Heavy-ball ≡ Chebyshev 半迭代：
@@ -558,45 +602,58 @@ $\kappa = 100$、200 步、Heavy-ball ≡ Chebyshev 半迭代：
 
 ![exp26](../figures/exp26_adam_limit_cycle.png)
 
-**图 28（exp28）— Muon 的"主场"**  
-谱范数 trust-region 损失上，5 个种子 Muon 都收敛到 0.028~0.037 的稳定带；这是 Muon 在合适目标上**严格、可重复地下降**的证据。把同一个 Muon 算法搬到 Frobenius 损失上则会发散——这是几何上的本质差异，而非算法 bug。
+**图 28（exp28）— Muon 在谱范数目标上的稳定性（不是"赢 GD"）**  
+谱范数 trust-region 损失上，5 个种子 Muon 都收敛到 0.028~0.037 的稳定带，体现其**严格、可重复地下降**；同一算法搬到 Frobenius 损失上则发散——几何错配而非 bug。**注意**：此图不声称 Muon 比 GD 快（见 §4.4）。
 
 ![exp28](../figures/exp28_muon_trust_region.png)
 
-### 6.4 修复纪事（透明度）
+**图 31（exp31）— Muon 的结构性特征：奇异值均衡**  
+让梯度条件数 $\kappa(G)$ 从 1 扫到 3162，Muon 更新 $-UV^\top$ 的条件数**恒为 1.000**，GD 更新条件数线性等于 $\kappa(G)$（图 31 左）。右图：$\kappa(G)=200$ 的梯度，其奇异值谱被 Muon 压平成全 1。这是 Muon 区别于 GD 的本质——而非"更快"。
 
-实验—结论—图三者一致性是写报告时最容易松动的环节。下表诚实记录我们这次修了什么：
+![exp31](../figures/exp31_muon_equalization.png)
 
-| 实验 | 之前的问题 | 修复方案 |
+**图 32（exp32）— 范数最速下降三元组**  
+三种范数的 LMO 解的内积 $\langle g, d^\star\rangle$ 都精确等于 $-\|g\|_{\mathrm{dual}}$（GD↔$\ell_2$、signSGD↔$\ell_1$、Muon↔核范数），且优于 3000 个随机方向。这数值验证了定理 5，把 GD/signSGD/Muon 统一成"选了不同范数的最速下降"。
+
+![exp32](../figures/exp32_norm_steepest_descent.png)
+
+### 7.4 修复纪事（透明度）
+
+实验—结论—图三者一致性是写报告时最容易松动的环节。下表诚实记录本轮（第三稿）修了什么——既有不收敛实验，也有**过度声称**和**一处真 bug**：
+
+| 项目 | 之前的问题 | 修复方案 |
 |------|------------|----------|
-| exp11 Nesterov | $\eta=1/L$ 配合错误状态更新→不收敛 | 改成强凸版 $y_k = x_k + \beta(x_k - x_{k-1})$，$x_{k+1} = y_k - \eta \nabla f(y_k)$ |
-| exp12 Muon | 在 Frobenius 二次上用 lr=0.005/L→发散；正文却说"演示几何" | 改用谱范数恢复目标（Muon 主场），同时保留 Frobenius 对照说明几何差异 |
-| exp15 Sophia | 简化版 $\gamma \cdot h$ + clip 阈值不当→不收敛 | 改成 Liu et al. 2023 Sophia-H 风格：用 Hessian 对角而非 $g^2$；$\rho=0.04$ |
-| exp23 8×32 胖矩阵 | NS 默认 $m\ge n$，胖矩阵 $X^\top X - I$ 错维度→不收敛 | 加分支：若 $m<n$ 先对 $X^\top$ 做 NS |
-| exp24 Adam ablation | 4 组配置都用同一 lr→3 组未收敛被错释为"机制差异" | 每组单独扫 lr 取最优；现在确认 $(0.9,0.999)$ 是唯一在 600 步内收敛者 |
-| exp_kappa_scan | MAX_ITER=600 固定→GD 在 $\kappa\ge 237$ 全部撞顶 | MAX_ITER 按 $\log(e_0/\epsilon)/\log(1/\rho^*)$ 动态计算 |
-| exp4 $\kappa_{\rm eff}$ | 单图、解释含糊 | 分两行 $(\beta_1,\beta_2)=(0.9,0.999)$ vs $(0,0.99)$，明示 bias correction 早期高 $\kappa_{\rm eff}$ 的代数原因 |
+| **$\kappa_{\rm eff}$ 公式 bug** | 算成 $\kappa(P_k^{-1}A)$，把对角 A 上理想 Jacobi 误算为 $\kappa^2$ | 改为正确的 $\kappa(P_kA)$（误差递推 $e_{k+1}=(I-P_kA)e_k$），重算所有 $\kappa_{\rm eff}$ 图 |
+| **Adam=Jacobi 过度声称** | 笼统说 Adam 改善条件数 | 诚实区分曲率 vs 梯度幅度；对角 A 上 Adam 只到 $\kappa_{\rm eff}{\approx}12$，oracle Jacobi 才到 1 |
+| **Muon"主场"过度声称** | 称 Muon 在谱范数目标上"赢 GD" | 诚实：凸二次上 CG 最优、Muon 不加速；价值是奇异值均衡（实验 31）|
+| **NS 收敛盆笼统** | 称"$\sqrt3$ 外发散" | 精确化：$(0,\sqrt3)\to{+}U$，外部分形（$-U$/弹回/发散），实验 30 区分符号 |
+| exp11 Nesterov | 状态更新错误→不收敛 | 改强凸版 $y_k = x_k + \beta(x_k - x_{k-1})$，$x_{k+1} = y_k - \eta \nabla f(y_k)$ |
+| exp12 Muon | Frobenius 二次上发散却称"演示几何" | 改用谱范数恢复目标 + 保留 Frob 对照 |
+| exp15 Sophia | 简化版 clip 阈值不当→不收敛 | 改 Liu et al. 2023 Sophia-H 风格（Hess 对角，$\rho=0.04$）|
+| exp23 8×32 胖矩阵 | NS 默认 $m\ge n$→维度错误发散 | 加分支：$m<n$ 时先对 $X^\top$ 做 NS |
+| exp24 ablation | 4 组同一 lr→错释为"机制差异" | 每组单独扫 lr 取最优 |
+| exp_kappa_scan | MAX_ITER=600→GD 在 $\kappa\ge237$ 撞顶 | MAX_ITER 按 $\log(e_0/\epsilon)/\log(1/\rho^*)$ 动态计算 |
 
-这些不是 cosmetic 修补——每一个都需要重新跑实验、对齐 JSON、再校对正文数字。
+这些不是 cosmetic 修补——每一个都需要重跑实验、对齐 JSON、再校对正文数字。我们认为**诚实交代负面结论与自己的错误，本身就是数值实验报告应有的素养**。
 
 ---
 
-## 7 结论
+## 8 结论
 
-1. **统一模板** $x_{k+1} = x_k - P_k g_k$ 把 GD（Richardson）、Heavy-ball（谱加速）、Adam（动态 Jacobi）、Sophia（对角 Hessian）、Muon（极分解）放在同一数值迭代框架下；不同 $P_k$ 对应不同的"古典"数值方法。
-2. **谱半径分析**精确预测二次问题上的收敛率：GD $\rho^* = (\kappa-1)/(\kappa+1)$、Polyak HB $\rho^* = (\sqrt\kappa-1)/(\sqrt\kappa+1)$；实验 6 经验拟合与理论在 $\kappa = 1000$ 时相对误差 0.1%。
-3. **HB ≡ Chebyshev 半迭代**（定理 4 + 实验 25）：两者最终 gap 差距 $1.14 \times 10^{-13}$；这从课内 CG/Chebyshev 视角解释了 Heavy-ball 不是凭空想的工程技巧而是 Chebyshev 半迭代的定常近似。
-4. **Newton–Schulz 二次收敛**有干净的递推 $E_{k+1} = -\tfrac{1}{4}E_k^2(3I - E_k)$，收敛盆 $(0, \sqrt 3)$ 由实验 30 在 100 个初值上直接观察证实——11 个 $\sigma_0 > \sqrt 3$ 全部发散。
-5. **Muon 的真本质**是谱范数 trust-region 最速下降（定理 7：von Neumann 迹不等式取等条件）；它在谱范数恢复目标上严格下降（实验 28，5 种子一致），在 Frobenius 损失上不下降是几何错配，与定理 7 完全吻合。
-6. **Adam 2-极限环**（实验 26）复现 Bock & Weiß (2022)：即使最简凸 $f(x) = x^2/2$ 上 Adam 也可能不收敛——这是 ML 调参玄学背后的真实数值现象，AMSGrad/Sophia 等修正方案的动机正在于此。
-7. **NAG ↔ ODE**（实验 29）：AVD-ODE $\ddot X + (3/t)\dot X + \nabla f = 0$ 的 RK4 解与离散 NAG 在 $t = \sqrt\eta k$ 下完全重合，"优化算法 = ODE 离散化"是可看到的事实。
+1. **统一模板** $x_{k+1} = x_k - P_k g_k$ 把 GD（Richardson）、Heavy-ball（谱加速）、Adam（对角缩放）、Sophia（对角曲率）、signSGD（$\ell_\infty$）、Muon（极分解）放进同一数值迭代框架。**更进一步**（§5）：它们都是 LMO $\arg\min_{\|d\|\le1}\langle g,d\rangle$ 在不同范数下的解——GD/signSGD/Muon = $\ell_2$/$\ell_\infty$/谱范数最速下降（定理 5）。
+2. **谱半径分析**精确预测收敛率：GD $\rho^* = (\kappa-1)/(\kappa+1)$、Polyak HB $(\sqrt\kappa-1)/(\sqrt\kappa+1)$；实验 6 经验拟合与理论在 $\kappa = 1000$ 时相对误差 0.1%。
+3. **HB = Chebyshev 半迭代的冻结系数极限**（定理 4 + 实验 25）：Chebyshev 时变系数 $\omega_k\to 1+\beta^*=1.6694$（吻合到 $10^{-7}$）；这从课内 CG/Chebyshev 解释了 Heavy-ball 的来历。
+4. **Newton–Schulz 二次收敛**有干净递推 $E_{k+1} = -\tfrac{1}{4}E_k^2(3I - E_k)$；保证收敛到**正确**极因子的盆是 $(0,\sqrt3)$，越界后是分形式归宿（实验 30 区分 $+U$/$-U$/发散）。
+5. **Muon 的真本质**是谱范数最速下降（定理 7），其结构性特征是更新条件数恒为 1（奇异值均衡，实验 31）。**诚实结论**：在凸二次上 CG 最优、Muon 不加速；Muon 的优势在匹配谱范数几何的深度学习场景（本文未实验证实）。
+6. **Adam 的真相**：对角缩放用梯度幅度而非曲率，故即便在对角 Hessian 上 $\kappa_{\rm eff}$ 也只到约 12（oracle Jacobi 到 1，实验 4）；Adam 在最简凸 $f=x^2/2$ 上有 2-极限环（实验 26，复现 Bock–Weiß 2022）。
+7. **NAG ↔ ODE**（实验 29）：AVD-ODE 的 RK4 解与离散 NAG 在 $t=\sqrt\eta k$ 下重合，"优化算法 = ODE 离散化"可视化。
 
-### 7.1 不足之处
+### 8.1 不足之处
 
-- 神经网络实验缺失：聚焦可控二次模型与矩阵恢复，没有在 MLP/CNN 上验证 Muon 的实际加速。这部分本质上需要 GPU 集群，超出 8 周课程项目的范围。
-- Chebyshev-Remez 最优 NS 系数（arXiv 2506.10935）我们只用了 Higham 的经典五阶版，没有完整复现 Remez 算法求解。
-- AMSGrad / Adam-W 等 Adam 修正方案虽然在 §3.3 提及，但没有跟 Bock–Weiß 极限环做精确对照实验。
-- 高分辨率 ODE 在 §5.3 仅给出公式，没做相应离散化误差分析实验。
+- 神经网络实验缺失：聚焦可控二次/矩阵恢复，未在 MLP/CNN 上验证 Muon 的实际加速（需 GPU 集群，超 8 周课程范围）。Muon 在深度学习里的优势（§4.4）因此**未在本文实验中证实**，只给了理论与结构性证据。
+- Chebyshev–Remez 最优 NS 系数（arXiv 2506.10935）只用了 Higham 经典五阶版，未完整复现 Remez 求解。
+- AMSGrad 等修正方案在 §3.3 提及，未与 Bock–Weiß 极限环做精确对照实验。
+- 高分辨率 ODE（§6.3）仅给公式，未做离散化误差分析实验。
 
 这些都列在 `re_TODO.md` 的 "Future Work" 段。
 
@@ -645,31 +702,33 @@ $\kappa = 100$、200 步、Heavy-ball ≡ Chebyshev 半迭代：
 | 文件 | 内容 |
 |------|------|
 | `src/quadratic.py` | 病态二次构造、目标、梯度 |
-| `src/optimizers.py` | gd / momentum / nesterov / adam / adamw / sophia / jacobi |
+| `src/optimizers.py` | gd / momentum / nesterov / adam / adamw / sophia / jacobi / **signsgd** + $\kappa(P_kA)$（已修正）|
 | `src/momentum_spectrum.py` | Polyak 谱半径计算 |
 | `src/newton_schulz.py` | NS 3 阶 + 5 阶 Higham + 胖矩阵分支 |
 | `src/chebyshev.py` | Chebyshev 半迭代 + minimax 误差多项式 + HB-Polyak 形式 |
 | `src/spectral_trust_region.py` | 谱范数恢复问题 + Muon/GD/Adam 对照 |
+| `src/steepest_descent_norms.py` | **范数最速下降三元组**：$\ell_2$/$\ell_\infty$/谱的 LMO + 对偶范数 + 均衡度量 |
 | `src/adam_limit_cycle.py` | 标量 Adam 迭代 + 2-极限环检测 |
 | `src/ode_integrators.py` | 梯度流 / Heavy-ball ODE / AVD-ODE / 高分辨率 NAG-ODE 的 RK4 |
 | `src/pcg.py` | CG / PCG + Jacobi + CG 理论上界 |
 | `src/matrix_quadratic.py` | $\min \tfrac{1}{2}\|AW-B\|_F^2$ 矩阵二次 + Muon-NS 接口 |
 | `experiments/run_all.py` | 实验 1–10 + 入口 |
-| `experiments/extended_experiments.py` | 实验 11–30 |
+| `experiments/extended_experiments.py` | 实验 11–32 |
 | `experiments/config.py` | 全局超参 |
-| `tests/test_*.py` | 14 项回归测试 |
+| `tests/test_*.py` | 19 项回归测试 |
 
-| $P_k$ 形态 | 优化器 | 代码标签 |
-|------------|--------|----------|
-| $\eta I$（固定） | GD | `gd` |
-| 二阶状态 + $\eta I$ | Polyak HB | `momentum, beta=-1` |
-| 二阶状态 + $\eta I$ + lookahead | Nesterov | `nesterov` |
-| $\eta\,\mathrm{diag}(\sqrt{\hat v_k})^{-1}$ | Adam | `adam` |
-| 同上 + 解耦 WD | AdamW | `adamw` |
-| $\eta\,\mathrm{diag}(\max(h_k,\varepsilon))^{-1}$ + clip | Sophia-H | `sophia` |
-| $\eta\,\mathrm{diag}(A)^{-1}$ | Oracle Jacobi | `jacobi` |
-| Newton–Schulz 正交化 $G$ | Muon | `src/matrix_quadratic.py:muon_direction` |
-| Chebyshev 时变 $\omega_k$ | Chebyshev 半迭代 | `src/chebyshev.py:chebyshev_semi_iterative` |
+| 更新方向 / $P_k$ | 优化器 | 范数视角 | 代码标签 |
+|------------|--------|----------|----------|
+| $\eta I$（固定） | GD | $\ell_2$ 最速下降 | `gd` |
+| 二阶状态 + $\eta I$ | Polyak HB | Chebyshev 冻结系数 | `momentum, beta=-1` |
+| 二阶状态 + lookahead | Nesterov | AVD-ODE 离散 | `nesterov` |
+| $\eta\,\mathrm{diag}(\sqrt{\hat v_k})^{-1}$ | Adam | 动态加权 $\ell_2$ | `adam` |
+| 同上 + 解耦 WD | AdamW | — | `adamw` |
+| $\eta\,\mathrm{diag}(\max(h_k,\varepsilon))^{-1}$ | Sophia-H | 对角曲率 | `sophia` |
+| $\eta\,\mathrm{diag}(A)^{-1}$ | Oracle Jacobi | 曲率预条件 | `jacobi` |
+| $-\eta\,\mathrm{sign}(g)$ | signSGD/Lion | $\ell_\infty$ 最速下降 | `signsgd` |
+| Newton–Schulz 正交化 $G$ | Muon | 谱范数最速下降 | `matrix_quadratic.py:muon_direction` |
+| Chebyshev 时变 $\omega_k$ | Chebyshev 半迭代 | 有限步 minimax | `chebyshev.py:chebyshev_semi_iterative` |
 
 ## 附录 B：实验数值自动摘要（精选）
 
@@ -698,12 +757,19 @@ $\kappa = 100$、200 步、Heavy-ball ≡ Chebyshev 半迭代：
 | 谱范数损失 (80 步) | 0.037 | $2.4\times 10^{-32}$ | $1.1\times 10^{-4}$ |
 | Frobenius 二次 (400 步) | 63266 | 51.4 | — |
 
-### 实验 25：HB ≡ Chebyshev 半迭代
+### 实验 4：Adam $\kappa_{\mathrm{eff}}=\kappa(P_kA)$ vs oracle Jacobi（修复后）
+
+| 情形（$\kappa(A)=100$）| oracle Jacobi $\kappa_{\mathrm{eff}}$ | Adam $\kappa_{\mathrm{eff}}$（稳定后）|
+|------|------|------|
+| 对角 $A$ | **1.0** | 约 12（最低 1.9）|
+| 稠密旋转 $A$ | 83 | 约 85 |
+
+### 实验 25：HB = Chebyshev 冻结系数极限
 
 | 量 | 值 |
 |-----|----|
-| 200 步后 $f - f^*$（HB）  | $10^{-30}$ |
-| 200 步后 $f - f^*$（Cheb）| $10^{-30}$ |
+| Chebyshev 系数极限 $\omega_\infty = 1+\beta^*$（解析）| 1.66942149 |
+| 数值 $\omega_{50}$ | 1.66942149 |
 | max gap diff（末 50 步） | $1.14 \times 10^{-13}$ |
 
 ### 实验 27：5 阶 vs 3 阶 NS（迭代到 $10^{-16}$）
@@ -714,11 +780,19 @@ $\kappa = 100$、200 步、Heavy-ball ≡ Chebyshev 半迭代：
 | $32{\times}16$ | 13 步 | **6 步** |
 | $64{\times}32$ | 15 步 | **8 步** |
 
-### 实验 30：Newton–Schulz 收敛盆
+### 实验 30：Newton–Schulz 收敛盆（三种归宿）
 
-- 理论收敛盆上界 $\sqrt 3 \approx 1.7321$
-- 100 个 $\sigma_0 \in [0.05, 2.5]$ 中 **11 个发散**，全部 $\sigma_0 > \sqrt 3$
-- 与定理 6 预言**完全一致**
+- 从 0 起的连续 $+U$ 盆上界 $=\sqrt 3 \approx 1.7321$（与理论一致）
+- 120 个 $\sigma_0 \in [0.05, 2.5]$：$(0,\sqrt3)$ 内 **86 个全部 $\to +U$**；外部 **21 个 $\to -U$**（符号错）、**13 个发散**
+- $\sqrt3$ 外是分形式归宿（含 $\sigma_0{=}2.21$ 弹回 $+U$），故只有 $(0,\sqrt3)$ 保证收敛到正确极因子
+
+### 实验 31–32：Muon 奇异值均衡 + 范数 LMO 三元组
+
+| 量 | 值 |
+|-----|----|
+| Muon 更新条件数（$\kappa(G)\in[1,3162]$）| **恒为 1.000** |
+| GD 更新条件数（$\kappa(G)=1000$）| 3162（继承 $\kappa(G)$）|
+| LMO 内积 $\langle g,d^\star\rangle$ vs $-\|g\|_{\mathrm{dual}}$ | 三种范数均**精确相等** |
 
 ---
 
@@ -892,21 +966,33 @@ $\beta_\infty = \omega_\infty - 1 = \frac{2(L+\mu) - (\sqrt L+\sqrt\mu)^2}{(\sqr
 
 故 Chebyshev 半迭代在 $k \to \infty$ 退化为 Polyak 最优 Heavy-ball；两者**渐近等价**，与实验 25 的 $1.14 \times 10^{-13}$ 数值结果一致。$\square$
 
-### C.4 命题 3 证明（Adam 与 Jacobi 预条件的关系）
+### C.4 命题 3 证明（Adam 与 Jacobi 的关系——及其失效条件）
 
-略证：$\beta_1 = 0$ 时 $\hat m_k = g_k / (1 - \beta_1^k) = g_k$；$v_k = (1-\beta_2)\sum_{j=1}^k \beta_2^{k-j}(g_j \odot g_j)$。在 $k\to\infty$ 与 $\beta_2 \to 1$ 极限下 $v_k$ 是 $g_j \odot g_j$ 的滑动平均，趋于 $\mathbb{E}[g \odot g]$。
+$\beta_1 = 0$ 时 $\hat m_k = g_k$；$v_k = (1-\beta_2)\sum_{j=1}^k \beta_2^{k-j}(g_j \odot g_j)$，在 $\beta_2 \to 1$ 极限下 $v_k$ 趋于 $g\odot g$ 的滑动平均。**关键在于这个平均到底等于什么**：
 
-对二次问题 $f(x) = \tfrac{1}{2}(x - x^*)^\top A (x - x^*)$，$g(x) = A(x - x^*)$。若 $x - x^*$ 与 $A$ 的特征基**统计独立**且单位方差，则
+对二次问题 $g(x) = A(x - x^*)$，第 $i$ 坐标 $g_i = \sum_j A_{ij}(x_j - x_j^*)$。**只有在 $A$ 对角时** $g_i = \lambda_i(x_i - x_i^*)$，于是
 
 $$
-\mathbb{E}[g \odot g] = \mathrm{diag}(A \mathbb{E}[(x - x^*)(x - x^*)^\top] A^\top) = \mathrm{diag}(A A^\top) = \mathrm{diag}(A)^2,
+\sqrt{\hat v_{k,i}} \approx |g_{k,i}| = \underbrace{\lambda_i}_{\text{曲率}}\cdot \underbrace{|x_{k,i} - x_i^*|}_{\text{到极小点的距离}}.
 $$
 
-故 $\sqrt{\hat v_k} \approx \mathrm{diag}(A)$，$P_k = \eta\,\mathrm{diag}(\sqrt{\hat v_k})^{-1} \approx \eta\,\mathrm{diag}(A)^{-1}$——恰为 Jacobi 预条件器。$\square$
+Jacobi 要的是 $\mathrm{diag}(A) = (\lambda_i)$（纯曲率）。Adam 的 $\sqrt{\hat v_k}$ 比它**多了一个距离因子** $|x_{k,i}-x_i^*|$。两者相等**当且仅当**各坐标距离均匀（$|x_{k,i}-x_i^*|$ 与 $i$ 无关），这只在特殊轨迹上成立。一般情形下 Adam $\ne$ Jacobi——这就是实验 4 中对角 $A$ 上 Adam 的 $\kappa_{\mathrm{eff}}\approx 12$ 而 oracle Jacobi $=1$ 的代数原因。
 
-### C.5 定理 6 二次收敛证明（已在 §4.1 给出）
+更一般地（$A$ 非对角），$\mathbb{E}[g\odot g] = \mathrm{diag}(A\,\Sigma_x\,A^\top)$ 含 $A$ 的**行**信息，与 $\mathrm{diag}(A)$（对角元）无简单关系，故"Adam = 动态 Jacobi"只能作为同属对角预条件家族的启发式，不是等式。$\square$
 
-### C.6 定理 7 证明（已在 §4.3 给出，von Neumann 迹不等式）
+### C.5 定理 5 证明（范数最速下降三元组的 LMO）
+
+要证 $d^\star = \arg\min_{\|d\|\le 1}\langle g, d\rangle$ 在三种范数下的闭式解，且最优值 $= -\|g\|_{\mathrm{dual}}$。
+
+**$\ell_2$**：由 Cauchy–Schwarz，$\langle g,d\rangle \ge -\|g\|_2\|d\|_2 \ge -\|g\|_2$，等号在 $d = -g/\|g\|_2$ 取到。对偶范数 $\|\cdot\|_2$ 自对偶。
+
+**$\ell_\infty$**：约束 $\max_i|d_i|\le 1$ 下逐坐标独立，$\langle g,d\rangle = \sum_i g_i d_i$ 在 $d_i = -\mathrm{sign}(g_i)$ 时最小，值为 $-\sum_i|g_i| = -\|g\|_1$。对偶 $\ell_\infty\leftrightarrow\ell_1$。
+
+**谱范数**：约束 $\sigma_{\max}(D)\le 1$。由 von Neumann 迹不等式 $\langle G, D\rangle = \mathrm{tr}(D^\top G)\ge -\sum_i\sigma_i(D)\sigma_i(G)\ge -\sum_i\sigma_i(G) = -\|G\|_*$，等号在 $D = -UV^\top$（与 $G$ 共享奇异向量、奇异值全取上界 1）时取到。对偶：谱范数 $\leftrightarrow$ 核范数。$\square$
+
+实验 32 数值验证了三式（内积与 $-\|g\|_{\mathrm{dual}}$ 完全相等），并蒙特卡洛确认 $d^\star$ 优于随机方向。
+
+### C.6 定理 6、7 证明（已分别在 §4.1、§4.3 给出）
 
 ---
 

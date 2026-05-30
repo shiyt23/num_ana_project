@@ -48,6 +48,7 @@ def run_optimizer(
         "adamw": _run_adamw,
         "sophia": _run_sophia,
         "jacobi": _run_jacobi_gd,
+        "signsgd": _run_signsgd,
     }
     if name not in runners:
         raise ValueError(f"未知优化器: {name}")
@@ -303,17 +304,62 @@ def _run_jacobi_gd(
     return RunResult(xs, fs, gs, ps)
 
 
+def _run_signsgd(
+    a: np.ndarray,
+    b: np.ndarray,
+    x0: np.ndarray,
+    max_iter: int,
+    lr: float | None,
+    decay: bool = True,
+    mu: float | None = None,
+    L: float | None = None,
+    **_,
+) -> RunResult:
+    """
+    signSGD = ℓ∞ 范数下的最速下降：x_{k+1} = x_k - η_k · sign(g_k)。
+
+    更新方向 -sign(g) 是 argmin_{‖d‖_∞ ≤ 1} ⟨g, d⟩ 的解，对应 ℓ∞ 单位球
+    的线性最小化 oracle。与 GD（ℓ₂）、Muon（谱范数）构成"范数最速下降三元组"。
+    由于 ℓ∞ 步不随梯度衰减，定常步长只能收敛到 O(η) 邻域；需衰减步长
+    η_k = η/√k 才能收敛到高精度（次梯度方法的经典结论）。
+    """
+    _ = _resolve_spectrum(a, mu, L)
+    base = lr if lr is not None else 0.5
+    dim = len(x0)
+    x = x0.copy()
+    xs, fs, gs, ps = [x.copy()], [objective(a, b, x)], [gradient(a, b, x)], [np.eye(dim) * base]
+    for t in range(1, max_iter + 1):
+        g = gradient(a, b, x)
+        step = base / np.sqrt(t) if decay else base
+        x = x - step * np.sign(g)
+        p_k = np.eye(dim) * step  # 名义预条件（方向已被 sign 改变）
+        xs.append(x.copy())
+        fs.append(objective(a, b, x))
+        gs.append(gradient(a, b, x))
+        ps.append(p_k.copy())
+    return RunResult(xs, fs, gs, ps)
+
+
 def effective_preconditioned_condition_number(
     a: np.ndarray, p_k: np.ndarray
 ) -> float:
-    """κ(P_k^{-1} A) 用于分析动态预条件。"""
-    try:
-        m = np.linalg.solve(p_k, a)
-    except np.linalg.LinAlgError:
-        m = np.linalg.pinv(p_k) @ a
-    sym = 0.5 * (m + m.T)
-    eigs = np.linalg.eigvalsh(sym)
-    eigs = eigs[eigs > 1e-12]
+    """有效预条件条件数 κ(P_k A)。
+
+    统一模板 x_{k+1} = x_k - P_k g_k 中 P_k 是乘在梯度上的"逆预条件"
+    （扮演 M^{-1} ≈ A^{-1} 的角色）。误差递推 e_{k+1} = (I - P_k A) e_k，
+    收敛由 P_k A 的谱决定，故有效条件数是 κ(P_k A)（**不是** κ(P_k^{-1} A)）。
+
+    对 P_k 对称正定（对角情形成立）、A 对称正定，P_k A 相似于对称矩阵
+    P_k^{1/2} A P_k^{1/2}，其特征值为正实数；用后者计算更稳定。
+    """
+    # 取对称部分作 P_k^{1/2}（P_k 通常已是对角/对称）
+    p_sym = 0.5 * (p_k + p_k.T)
+    w, v = np.linalg.eigh(p_sym)
+    w = np.clip(w, 0.0, None)
+    p_half = (v * np.sqrt(w)) @ v.T
+    m = p_half @ a @ p_half  # 对称, 与 P_k A 同谱
+    eigs = np.linalg.eigvalsh(0.5 * (m + m.T))
+    eigs = eigs[eigs > 1e-14]
     if len(eigs) < 2:
         return 1.0
     return float(eigs.max() / eigs.min())

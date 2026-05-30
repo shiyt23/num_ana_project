@@ -200,58 +200,77 @@ def exp3_newton_schulz() -> dict:
     return results
 
 
-def exp4_preconditioner_evolution() -> dict:
-    """实验4：Adam 有效预条件条件数 κ_eff 随迭代演化。
+def _diagonal_quadratic(dim: int, kappa: float, seed: int = 0):
+    """对角 Hessian A=diag(geomspace(1,κ))，此时 Jacobi/Adam 的对角预条件可对齐特征方向。"""
+    rng = np.random.default_rng(seed)
+    eigvals = np.geomspace(1.0, kappa, dim)
+    a = np.diag(eigvals)
+    x_star = rng.standard_normal(dim)
+    b = a @ x_star
+    return a, b, 1.0, kappa
 
-    重点说明：早期 ŷv_k 小→预条件 ill-conditioned；中后期 κ_eff 才下降。
-    本实验分两组：
-      (a) 默认 (β1,β2)=(0.9, 0.999)；
-      (b) (β1,β2)=(0.0, 0.99) "快速适应版"，对角 A 上应快速降到 κ_eff ≈ 1。
+
+def exp4_preconditioner_evolution() -> dict:
+    """实验4：Adam 的 κ_eff vs oracle Jacobi —— 诚实版。
+
+    关键诚实点（比"Adam=Jacobi"更精确）：
+      Jacobi 预条件用**曲率** diag(A)，在对角 A 上给出 κ(P⁻¹A)=1（理想）；
+      Adam 预条件用**梯度幅度** √EMA(g²)。在二次问题上 |g_i|=λ_i·|x_i−x*_i|，
+      把曲率 λ_i 与到极小点的距离 |x_i−x*_i| 混在一起，因此即便在对角 A 上
+      Adam 的 κ_eff 也**不趋于 1**（反而可达 ~κ² 量级）。
+    这说明"Adam = 动态 Jacobi"只是启发式类比：二者都做对角缩放，但
+    Adam 缩放的是梯度幅度而非曲率，仅在特定统计假设下才与 Jacobi 重合。
+      每个子图：Adam κ_eff(k) 曲线 + oracle Jacobi κ_eff（水平虚线）+ κ(A)。
     """
     results = {}
     fig, axes = plt.subplots(2, 3, figsize=(14, 7))
 
-    diag_kappa = 100.0  # 用对角矩阵观察 Adam 是否能恢复 κ_eff = 1
-
     for col, kappa in enumerate(CONDITION_NUMBERS):
-        for row, (cfg_label, beta1, beta2, lr) in enumerate([
-            ("default (0.9, 0.999)", 0.9, 0.999, ADAM_LR_PRECOND_STUDY),
-            ("fast adapt (0.0, 0.99)", 0.0, 0.99, 0.5),
+        for row, (prob_label, make_prob) in enumerate([
+            ("diagonal A", _diagonal_quadratic),
+            ("dense rotated A", make_quadratic_problem),
         ]):
-            a, b, mu, L = make_quadratic_problem(DIM, kappa, seed=SEED)
+            a, b, mu, L = make_prob(DIM, kappa, seed=SEED)
             x0 = np.zeros(DIM)
             run = run_optimizer(
-                "adam", a, b, x0, MAX_ITER, lr=lr, mu=mu, L=L,
-                beta1=beta1, beta2=beta2,
+                "adam", a, b, x0, MAX_ITER, lr=0.5, mu=mu, L=L,
+                beta1=0.0, beta2=0.99,
             )
             kappa_true = float(np.linalg.cond(a))
             kappa_eff = [
                 effective_preconditioned_condition_number(a, p)
                 for p in run.preconditioners[1:401]
             ]
+            # oracle Jacobi: P = diag(A)^{-1}（曲率预条件）
+            p_jac = np.diag(1.0 / np.clip(np.diag(a), 1e-12, None))
+            kappa_jac = effective_preconditioned_condition_number(a, p_jac)
+
             ax = axes[row, col]
-            ax.plot(kappa_eff, color="#2ca02c", linewidth=1.4)
+            ax.plot(kappa_eff, color="#2ca02c", linewidth=1.4,
+                    label=r"Adam $\kappa(P_k^{-1}A)$")
+            ax.axhline(kappa_jac, color="#1f77b4", linestyle="-.",
+                       label=rf"oracle Jacobi $={kappa_jac:.1f}$")
             ax.axhline(kappa_true, color="gray", linestyle="--",
                        label=rf"$\kappa(A)={kappa_true:.0f}$")
-            ax.set_title(rf"$\kappa={kappa}$, {cfg_label}", fontsize=10)
+            ax.axhline(1.0, color="black", linestyle=":", alpha=0.5)
+            ax.set_title(rf"$\kappa={kappa}$, {prob_label}", fontsize=10)
             if row == 1:
                 ax.set_xlabel("Iteration k (first 400)")
             ax.set_yscale("log")
-            ax.legend(fontsize=7)
+            ax.legend(fontsize=6.5)
             ax.grid(True, alpha=0.3)
-            results[f"kappa{kappa}_b1_{beta1}_b2_{beta2}_kappa_eff_final"] = float(
-                kappa_eff[-1]
-            )
-            results[f"kappa{kappa}_b1_{beta1}_b2_{beta2}_kappa_eff_min"] = float(
-                min(kappa_eff)
-            )
+            tag = "diag" if row == 0 else "dense"
+            results[f"kappa{kappa}_{tag}_adam_kappa_eff_final"] = float(kappa_eff[-1])
+            results[f"kappa{kappa}_{tag}_adam_kappa_eff_min"] = float(min(kappa_eff))
+            results[f"kappa{kappa}_{tag}_jacobi_kappa_eff"] = float(kappa_jac)
 
-    axes[0, 0].set_ylabel(r"Default $\kappa(P_k^{-1} A)$")
-    axes[1, 0].set_ylabel(r"Fast-adapt $\kappa(P_k^{-1} A)$")
+    axes[0, 0].set_ylabel(r"Diagonal $A$: $\kappa(P_k^{-1} A)$")
+    axes[1, 0].set_ylabel(r"Dense $A$: $\kappa(P_k^{-1} A)$")
     fig.suptitle(
-        "Adam effective preconditioner $\\kappa_{\\mathrm{eff}}$ "
-        "(top: default; bottom: fast-adapt $\\beta$)",
-        fontsize=12,
+        "Adam preconditions by gradient magnitude, NOT curvature: "
+        "even on diagonal $A$, Adam's $\\kappa_{\\mathrm{eff}} \\neq 1$ "
+        "while oracle Jacobi $=1$",
+        fontsize=11,
     )
     fig.tight_layout()
     fig.savefig(FIG_DIR / "exp4_precond_kappa.png", dpi=150)
@@ -648,6 +667,12 @@ def exp10_trajectories_2d() -> dict:
 
 def main() -> None:
     setup_dirs()
+    # 极端 κ（如 1000）下 Heavy-ball 标量递推会数值溢出，属预期边界行为，
+    # 结果已被 max(·,1e-30) 截断，这里抑制相应 RuntimeWarning 以保持输出整洁。
+    import warnings
+
+    np.seterr(over="ignore", invalid="ignore")
+    warnings.filterwarnings("ignore", category=RuntimeWarning)
     plt.rcParams["font.sans-serif"] = ["DejaVu Sans", "SimHei", "Arial Unicode MS"]
     plt.rcParams["axes.unicode_minus"] = False
 

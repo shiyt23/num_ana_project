@@ -20,5 +20,8 @@ env/
 .DS_Store
 Thumbs.db
 
+# docx 行间公式渲染缓存（由 scripts/build_docx.py 自动生成）
+report/_eqn_cache/
+
 # Optional: uncomment if you prefer regenerating figures on clone
 # figures/

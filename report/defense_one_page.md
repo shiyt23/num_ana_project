@@ -7,31 +7,31 @@
 
 ## 核心信息（30 秒）
 
-统一模板 $x_{k+1} = x_k - P_k g_k$：GD = Richardson；HB / Nesterov = 谱加速；Adam = 动态 Jacobi；**Muon = Newton–Schulz 极分解 = 谱范数 trust-region 最速下降**（核心）。
+统一模板 $x_{k+1} = x_k - P_k g_k$，**更进一步**：GD / signSGD / Muon = $\ell_2$ / $\ell_\infty$ / 谱范数下的**最速下降**（同一个 LMO，不同范数）。HB = Chebyshev 半迭代的冻结系数极限；Adam = 动态对角缩放（用梯度幅度而非曲率）；**Muon = Newton–Schulz 极分解 = 谱范数最速下降**（核心）。
 
 ---
 
-## 图 1：经典—Heavy-ball ≡ Chebyshev 半迭代
+## 图 1：经典—Heavy-ball 是 Chebyshev 半迭代的冻结系数极限
 
 ![exp25](../figures/exp25_hb_chebyshev.png)
 
-**一句话**：Polyak 1964 年的 Heavy-ball 在二次问题上与 Chebyshev 半迭代渐近等价（max gap diff $= 1.14\times 10^{-13}$），即"动量加速 = 课内 Chebyshev minimax"。完整证明在附录 C.3。
+**一句话**：Chebyshev 半迭代的时变系数 $\omega_k$ 单调收敛到 $1+\beta^* = 1.6694$（吻合 $10^{-7}$，中图）；Polyak Heavy-ball 就是把它冻结。即"动量加速 = 课内 Chebyshev minimax 的定常版本"。完整证明在附录 C.3。
 
 ---
 
-## 图 2：核心—Muon 在谱范数 trust-region 上严格下降
+## 图 2：核心—Muon 的奇异值均衡（结构性特征）
 
-![exp28](../figures/exp28_muon_trust_region.png)
+![exp31](../figures/exp31_muon_equalization.png)
 
-**一句话**：5 个种子 Muon 都从 1.08 下降到 0.028~0.037 的稳定带；Muon 优化的不是 Frobenius 几何，而是谱范数几何（定理 7：von Neumann 迹不等式取等）。
+**一句话**：让梯度条件数 $\kappa(G)$ 从 1 扫到 3162，Muon 更新 $-UV^\top$ 的条件数**恒为 1**（GD 更新继承 $\kappa(G)$）。这是 Muon 区别于 GD 的本质——**诚实说**：凸二次上 CG 最优、Muon 不更快，它的价值是这个结构性的"均衡"，在深度学习里有用。
 
 ---
 
-## 图 3：极致—Newton–Schulz 收敛盆 $\sqrt 3$
+## 图 3：极致—Newton–Schulz 收敛盆 $\sqrt 3$（三种归宿）
 
 ![exp30](../figures/exp30_ns_basin.png)
 
-**一句话**：100 个初值 $\sigma_0 \in [0.05, 2.5]$ 中恰好 11 个发散，全部 $\sigma_0 > \sqrt 3$；定理 6 的局部二次收敛盆从纸面变成肉眼可见的事实。
+**一句话**：$(0,\sqrt3)$ 内 86 个初值全部收敛到**正确**极因子 $+U$；越过 $\sqrt3$ 后 21 个收敛到 $-U$（符号错）、13 个发散——盆是分形式的。定理 6 的局部分析从纸面变成肉眼可见。
 
 ---
 
@@ -39,12 +39,14 @@
 
 | 问题 | 答 |
 |------|-----|
-| 为什么选 Muon？ | Muon 是 2024 年最新优化器，核心是 Higham 教材里的极分解 NS 迭代——把"纯前沿"和"纯数值分析"对接起来 |
-| HB 与 Chebyshev 怎么等价的？ | Chebyshev 半迭代时变 $\omega_k$ 不动点解出来正好是 $1 + \beta^*$，定常极限即 HB |
-| Muon 在 Frobenius 上发散？ | 不是 bug：谱范数 trust-region 与 Frobenius 几何错配，定理 7 蕴含 |
-| Adam 真的不收敛？ | Bock-Weiß 2022：最简凸 $f = x^2/2$ 上仍有 2-极限环；E26 我们复现到 $x^\pm = (0.025, -0.025)$ |
-| 修了哪些实验？ | exp11 Nesterov、exp12 Muon、exp15 Sophia、exp23 胖矩阵 NS、exp24 ablation、exp_kappa_scan、exp4——见报告 §6.4 修复纪事 |
-| 为什么不做 NN？ | 聚焦可控二次/矩阵恢复，理论闭环；NN 实验需 GPU 集群，超出 8 周课程范围 |
+| 为什么选 Muon？ | 2024 年最新优化器，核心是 Higham 教材里的极分解 NS 迭代——"纯前沿"对接"纯数值分析" |
+| GD/signSGD/Muon 怎么统一？ | 都是 LMO $\arg\min_{\|d\|\le1}\langle g,d\rangle$，分别选 $\ell_2$/$\ell_\infty$/谱范数（定理 5，实验 32）|
+| HB 与 Chebyshev 怎么等价？ | Chebyshev 时变 $\omega_k\to 1+\beta^*$，冻结系数即 HB（附录 C.3）|
+| Muon 比 GD 快吗？ | **诚实：不**。凸二次上 CG 最优；Muon 价值是奇异值均衡（实验 31）+ 深度学习几何 |
+| Adam = Jacobi 吗？ | **不等**。Adam 用梯度幅度、Jacobi 用曲率；对角 A 上 Adam $\kappa_{\rm eff}{\approx}12$、Jacobi$=1$（实验 4）|
+| Adam 真的不收敛？ | Bock–Weiß 2022：最简凸 $f=x^2/2$ 上有 2-极限环；实验 26 复现到 $x^\pm=(0.025,-0.025)$ |
+| 修了哪些问题？ | 一处真 bug（$\kappa_{\rm eff}$ 应为 $\kappa(P_kA)$）+ 多处过度声称 + 7 个不收敛实验——见 §7.4 |
+| 为什么不做 NN？ | 聚焦可控二次/矩阵恢复，理论闭环；NN 需 GPU 集群，超出课程范围 |
 
 ---
 
