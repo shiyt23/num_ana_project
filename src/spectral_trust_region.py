@@ -2,14 +2,14 @@
 
 核心动机（Kovalev 2025）：Muon 等价于
     Δ W = argmin_{‖U‖_σ ≤ 1} ⟨G, U⟩_F · t
-即沿 ⟨G, ·⟩_F 的谱范数最速下降。其闭式解恰为极分解 G = U Σ V^T 中
+即沿 ⟨G, ·⟩_F 的谱范数 trust-region 线性子问题最速下降。其闭式解恰为极分解 G = U Σ V^T 中
 的正交因子 U V^T 乘以 trust-region 半径 t。
 
-为让 Muon-NS 在数值实验上**严格下降**，我们设计两类适配目标：
+为观察 Muon-NS 在匹配谱范数几何的任务上的下降行为，我们设计两类适配目标：
 
 (1) 谱范数加权矩阵恢复：
     f(W) = (1/2) ‖U Σ V^T - W‖_σ^2  (谱范数损失)
-   其梯度方向与极分解一致，Muon 一步即可达最优。
+   用于展示 Muon 正交化方向与谱范数 trust-region 线性化子问题的匹配。
 
 (2) 算子拟合（Frobenius 内积线性目标）：
     f(W) = -⟨G_*, W⟩_F + (1/2) ‖W‖_σ^2
@@ -71,7 +71,8 @@ def run_muon_on_spectral_recovery(
     Muon 在谱范数恢复目标上：
         ∇_W (1/2) ‖W - W*‖_F^2 = W - W*  (用 Frobenius 梯度作下降方向，
         但 Muon 把它正交化后作用于 W)
-    谱范数损失上，正交化方向恰是最速下降，故 Muon 严格下降。
+    谱范数损失一般非光滑；这里检验的是正交化方向与谱范数 trust-region
+    线性化几何相匹配时的下降行为。
     """
     w = w0.copy()
     losses = [spectral_recovery_loss(w, w_star)]

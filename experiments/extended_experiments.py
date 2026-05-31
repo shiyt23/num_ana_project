@@ -1,18 +1,4 @@
 """实验 E11–E29：扩展实验集合，以 Muon 为核心，配以 Chebyshev / ODE / 极限环。
-
-本次重写要点：
-- E11 改用强凸 Nesterov，使其在 600 步内真正收敛
-- E12 改用谱范数恢复问题，让 Muon 单调下降
-- E15 Sophia 按 Hessian-on-diagonal 风格调参，保证收敛
-- E23 NS 在胖矩阵下也收敛（已在 src/newton_schulz.py 修复）
-- E24 每个 ablation 单独扫 lr，避免"看起来不收敛实际是 lr 不对"的误读
-- 新增 E25 HB ≡ Chebyshev 半迭代等价
-- 新增 E26 Adam 极限环 (Bock-Weiß)
-- 新增 E27 Chebyshev-NS vs 标准 NS
-- 新增 E28 Muon 在谱范数 trust-region 损失上严格下降
-- 新增 E29 NAG-ODE 解轨迹 vs 离散 NAG
-- 新增 E30 NS 收敛域 (0, √3) 可视化
-- κ 扫描的 MAX_ITER 改为按理论上界动态计算，避免曲线被截断
 """
 
 from __future__ import annotations
@@ -127,10 +113,10 @@ def exp11_nesterov_vs_polyak() -> dict:
 
 
 def exp12_muon_spectral_recovery() -> dict:
-    """E12: Muon 在谱范数恢复目标上严格下降；与 GD/Adam 对照。
+    """E12: Muon 在谱范数恢复目标上下降；与 GD/Adam 对照。
 
     问题：min_W (1/2) ‖W - W*‖_σ²  (谱范数损失)
-    Muon 的极分解方向恰是谱范数最速下降，故应严格下降。
+    用于展示 Muon 正交化方向与谱范数 trust-region 线性化几何的匹配。
     """
     m, n = 16, 8
     w_star, _ = make_spectral_recovery_problem(m, n, seed=SEED)
@@ -691,10 +677,10 @@ def exp22_beta_eta_heatmap() -> dict:
 
 
 def exp25_heavy_ball_chebyshev_equivalence() -> dict:
-    """E25: Heavy-ball ≡ Chebyshev 半迭代（核心理论结果数值验证）。
+    """E25: Heavy-ball 是 Chebyshev 半迭代的定常极限（核心理论结果数值验证）。
 
-    主张：在二次目标上，Polyak Heavy-ball 用最优 (η*, β*) 与
-    Chebyshev 半迭代（时变 ω_k → β*）渐近等价。
+    主张：在二次目标上，Chebyshev 半迭代的时变系数收敛后，
+    递推退化为使用最优 (η*, β*) 的 Polyak Heavy-ball。
     """
     kappa = 100.0
     a, b, mu, L = make_quadratic_problem(DIM, kappa, seed=SEED)
@@ -719,7 +705,7 @@ def exp25_heavy_ball_chebyshev_equivalence() -> dict:
     axes[0].semilogy(bounds, "k:", linewidth=1, label=r"Cheb. minimax bound")
     axes[0].set_xlabel("Iteration k")
     axes[0].set_ylabel(r"$f - f^*$")
-    axes[0].set_title(rf"$\kappa={int(kappa)}$: Chebyshev $\equiv$ Polyak HB")
+    axes[0].set_title(rf"$\kappa={int(kappa)}$: Chebyshev $\to$ Polyak HB")
     axes[0].legend(fontsize=8)
     axes[0].grid(True, alpha=0.3)
 
@@ -736,7 +722,7 @@ def exp25_heavy_ball_chebyshev_equivalence() -> dict:
     axes[1].legend(fontsize=8)
     axes[1].grid(True, alpha=0.3)
 
-    fig.suptitle("E25: Heavy-ball ≡ Chebyshev semi-iteration (numerical equivalence)",
+    fig.suptitle("E25: Heavy-ball as stationary limit of Chebyshev semi-iteration",
                  fontsize=12)
     fig.tight_layout()
     fig.savefig(FIG_DIR / "exp25_hb_chebyshev.png", dpi=150)
@@ -795,7 +781,7 @@ def exp26_adam_limit_cycle() -> dict:
 
 
 def exp27_chebyshev_ns_vs_standard() -> dict:
-    """E27: Chebyshev 加速 NS vs 标准 NS（arXiv 2506.10935 简化版）。"""
+    """E27: 五次多项式 Higham NS vs 标准 NS（arXiv 2506.10935 简化版）。"""
     rng = np.random.default_rng(SEED)
     sizes = [(16, 8), (32, 16), (64, 32)]
     results = {}
@@ -804,9 +790,9 @@ def exp27_chebyshev_ns_vs_standard() -> dict:
         g = rng.standard_normal((m, n))
         _, errs_std = newton_schulz_iterate(g, max_iter=12)
         _, errs_cheb = chebyshev_ns_iterate(g, max_iter=12)
-        ax.semilogy(errs_std, "o-", label="Standard NS (3rd-order)",
+        ax.semilogy(errs_std, "o-", label="Standard NS",
                    color="#1f77b4", linewidth=1.4)
-        ax.semilogy(errs_cheb, "s-", label="Chebyshev NS (5th-order)",
+        ax.semilogy(errs_cheb, "s-", label="Higham 5th-degree polynomial NS",
                    color="#d62728", linewidth=1.4)
         ax.set_title(rf"${m}\times{n}$")
         ax.set_xlabel("Iteration")
@@ -815,7 +801,7 @@ def exp27_chebyshev_ns_vs_standard() -> dict:
         results[f"{m}x{n}_std_final"] = errs_std[-1]
         results[f"{m}x{n}_cheb_final"] = errs_cheb[-1]
     axes[0].set_ylabel(r"Gram error $\|X^\top X - I\|_F$")
-    fig.suptitle("E27: Chebyshev-accelerated Newton-Schulz vs standard 3rd-order",
+    fig.suptitle("E27: Higham fifth-degree Newton-Schulz vs standard NS",
                  fontsize=12)
     fig.tight_layout()
     fig.savefig(FIG_DIR / "exp27_chebyshev_ns.png", dpi=150)
@@ -827,7 +813,7 @@ def exp28_muon_on_trust_region() -> dict:
     """E28: Muon vs GD vs Adam 在谱范数 trust-region 损失上的对比。
 
     问题：min_W (1/2) ‖W - W*‖_σ² (谱范数距离)；
-    Muon 一步即沿极分解方向下降，应严格、快速收敛。
+    用于检验 Muon 正交化方向与谱范数 trust-region 线性化几何相匹配时的下降行为。
     """
     seeds = [0, 1, 2, 3, 4]
     max_iter = 60

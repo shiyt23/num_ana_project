@@ -1,9 +1,9 @@
-"""Chebyshev 半迭代法 (Chebyshev semi-iteration) 与 Heavy-ball 的等价分析。
+"""Chebyshev 半迭代法 (Chebyshev semi-iteration) 与 Heavy-ball 的关系分析。
 
 数值分析事实：对二次问题 f(x) = (1/2) x^T A x - b^T x，求 Ax=b
 等价于多项式预条件 e_k = p_k(A) e_0，其中 p_k 在 spec(A) 上 minimax 最小。
-Chebyshev minimax 解给出最优多项式，其三项递推恰好等价于
-Heavy-ball 迭代在 Polyak 最优 (η*, β*) 下的形式。
+Chebyshev minimax 解给出最优多项式；其三项递推的时变系数收敛后，
+会退化为 Heavy-ball 在 Polyak 最优 (η*, β*) 下的定常形式。
 
 参考：
 - Saad, Iterative Methods, §5.3, §6.11
@@ -75,8 +75,8 @@ def heavy_ball_polyak_form(
         x_{k+1} = x_k - η g_k + β (x_k - x_{k-1})
     使用最优 η* = 4/(√L + √μ)², β* = ((√L-√μ)/(√L+√μ))².
 
-    与 Chebyshev 半迭代在二次目标上**渐近等价**——
-    Chebyshev 用时变 ρ_k 收敛到 β*，故 HB 是 Chebyshev 的"定常版本"。
+    与 Chebyshev 半迭代在二次目标上具有定常极限关系——
+    Chebyshev 用时变 ρ_k，系数收敛后退化为 Polyak HB 的"定常版本"。
     """
     eta = 4.0 / (np.sqrt(L) + np.sqrt(mu)) ** 2
     beta = ((np.sqrt(L) - np.sqrt(mu)) / (np.sqrt(L) + np.sqrt(mu))) ** 2

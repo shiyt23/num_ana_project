@@ -2,20 +2,19 @@
 
 **课程**：数值分析与算法
 **作者**：赵泽霖（2023010848）、史云天（2023010836）
-**日期**：2026 年 5 月
 
 ---
 
 ## 摘要
 
-近年来 Muon 优化器把矩阵正交化（极分解的多项式近似）引入深度学习训练，被认为是 Adam 之后第一个"非对角"型现代优化器；同期理论上 Kovalev (2025) 证明它等价于谱范数 trust-region 最速下降。我们把 Muon 重新放回**矩阵迭代/矩阵函数**这一经典数值分析背景：核心数值步骤 Newton–Schulz 迭代 $X_{k+1} = \tfrac{1}{2}X_k(3I - X_k^\top X_k)$ 是 Higham 教材里的极分解迭代，具有局部二次收敛性和明确的收敛盆 $\sigma_0\in(0,\sqrt 3)$。围绕这个核心，我们做四件事：
+近年来 Muon 优化器把矩阵正交化（极分解的多项式近似）引入深度学习训练，被认为是 Adam 之后第一个"非对角"型现代优化器；同期理论上 Kovalev (2025) 将它解释为谱范数 trust-region 线性子问题的最速下降。我们把 Muon 重新放回**矩阵迭代/矩阵函数**这一经典数值分析背景：核心数值步骤 Newton–Schulz 迭代 $X_{k+1} = \tfrac{1}{2}X_k(3I - X_k^\top X_k)$ 是 Higham 教材里的极分解迭代，具有局部二次收敛性和明确的收敛盆 $\sigma_0\in(0,\sqrt 3)$。围绕这个核心，我们做四件事：
 
-1. **完整的数值分析视角推导**：给出 GD 在强凸二次上的线性收敛、Heavy-ball 谱半径最优性、**Heavy-ball ≡ Chebyshev 半迭代**等价定理（这是把课内 CG/Chebyshev 与现代动量法直接挂钩的桥梁）、Newton–Schulz 二次收敛（含 $E_{k+1}=-\tfrac{1}{2}E_k^2(3I+E_k)$ 完整推导）、以及极分解作为谱范数 trust-region 最速下降的最优性证明。
+1. **完整的数值分析视角推导**：给出 GD 在强凸二次上的线性收敛、Heavy-ball 谱半径最优性、**Heavy-ball 作为 Chebyshev 半迭代定常极限**的关系（这是把课内 CG/Chebyshev 与现代动量法直接挂钩的桥梁）、Newton–Schulz 二次收敛（含 $E_{k+1}=-\tfrac{1}{4}E_k^2(3I-E_k)$ 完整推导）、以及极分解作为谱范数 trust-region 线性子问题最速下降方向的最优性证明。
 2. **三条前沿链条**：把 Muon 的 trust-region 解释、Adam/AdamW 收敛与 Bock–Weiß 极限环、Su–Boyd–Candès AVD-ODE 和高分辨率 ODE 全部纳入同一个 $x_{k+1}=x_k-P_k g_k$ 模板下讨论。
-3. **20 组数值实验**：覆盖病态二次 ($\kappa\in\{10,100,10000\}$)、谱范数 trust-region 损失、Heavy-ball/Chebyshev 数值等价、Adam 2-极限环、NAG-ODE 与离散迭代的相图对照、Newton–Schulz 收敛盆边界 $\sqrt 3$ 的直接观测。本次重写**修复了之前版本中 7 个不收敛的实验**（exp11 Nesterov、exp12 Muon、exp15 Sophia、exp23 8×32 NS、exp24 Adam 消融、exp_kappa_scan 截断、exp4 $\kappa_{\rm eff}$ 解释）。
+3. **20 组数值实验**：覆盖病态二次 ($\kappa\in\{10,100,10000\}$)、谱范数 trust-region 损失、Heavy-ball/Chebyshev 定常极限关系、Adam 2-极限环、NAG-ODE 与离散迭代的相图对照、Newton–Schulz 收敛盆边界 $\sqrt 3$ 的直接观测。
 4. **代码与可复现**：14 项 pytest + 一键复现脚本 + 33 张图自动生成；图表与正文 claim 数值上严格对齐。
 
-关键发现：Muon 在**谱范数恢复目标**上 80 步内将谱范数损失从 1.077 降到 0.037（约 30× 下降），而在 Frobenius 矩阵二次上确实不下降——后者并非实现 bug，而是反映了 trust-region 几何与 Frobenius 几何的本质错配。Polyak 最优 Heavy-ball 与 Chebyshev 半迭代的最大差距为 $1.1\times 10^{-13}$，是机器精度意义下的等价。Newton–Schulz 在 100 个初值 $\sigma_0\in[0.05, 2.5]$ 中恰好有 11 个发散，全部落在 $\sigma_0>\sqrt 3$ 区域，与定理预言一致。
+关键发现：Muon 在**谱范数恢复目标**上 80 步内将谱范数损失从 1.077 降到 0.037（约 30× 下降），而在 Frobenius 矩阵二次上确实不下降——后者并非实现 bug，而是反映了 trust-region 几何与 Frobenius 几何的本质错配。Polyak 最优 Heavy-ball 可看作 Chebyshev 半迭代的定常极限；在实验 25 的末段，两者的目标函数 gap 差距降到 $1.7\times 10^{-13}$。Newton–Schulz 在 100 个初值 $\sigma_0\in[0.05, 2.5]$ 中恰好有 11 个发散，全部落在 $\sigma_0>\sqrt 3$ 区域，与定理预言一致。
 
 **关键词**：Newton–Schulz 迭代；极分解；Muon 优化器；谱范数 trust-region；Chebyshev 半迭代；Heavy-ball；Nesterov 加速；动态预条件；ODE 离散化。
 
@@ -37,11 +36,11 @@ $$
 
 ### 1.2 我们为什么选 Muon 做核心
 
-读 detailed_plan 时，我们看了 5 个候选方向。最后选了 C 路线（Muon 为核心），原因是：
+我们曾经考察了多个候选方向，最终选择了以Muon作为核心，原因是：
 
-1. **它是真的"现代"前沿**——Muon 2024 年 10 月才上 GitHub，2025 年才有理论文章（Kovalev 2025、arXiv 2510.19933 等）；助教看到这个题目应当是新鲜的。
+1. **它是真的"现代"前沿**——Muon 2024 年 10 月才上 GitHub，2025 年才有理论文章（Kovalev 2025、arXiv 2510.19933 等）。
 2. **它最数值分析**——Adam 是机器学习圈的工程产物，理论分析里大多是 regret bound；Muon 不一样，它的核心子程序就是 Higham 教材第 8 章里讲的极分解 Newton–Schulz 迭代，这是 1933 年 G. Schulz 提出的纯数值算法。
-3. **它在我们能写的篇幅里有完整的理论闭环**：从极分解的存在唯一性，到 Newton–Schulz 二次收敛和 $\sqrt 3$ 收敛盆，到 Kovalev 的谱范数 trust-region 等价，每一步都能严格证明，不需要随机假设。
+3. **它在我们能写的篇幅里有完整的理论闭环**：从极分解的存在唯一性，到 Newton–Schulz 二次收敛和 $\sqrt 3$ 收敛盆，到 Kovalev 的谱范数 trust-region 线性化解释，每一步都能严格证明，不需要随机假设。
 
 下面这张图是我们的"路线图"。横向是机制（$P_k$ 的形态），纵向是它在课内 / 前沿的对应：
 
@@ -54,19 +53,6 @@ $$
 | 矩阵正交化 $G\to U V^\top$（极分解）                  | **Newton–Schulz 矩阵迭代**         | **Muon**              | **二次收敛 + 谱范数 trust-region 最优 (定理 6, 7)** |
 
 本文的安排是：第 2 节给数值迭代的预备知识（谱半径、Krylov、Chebyshev、极分解）；第 3 节是 GD/HB/Adam 三大基线机制；第 4 节是核心——Newton–Schulz 和 Muon；第 5 节是 ODE 视角；第 6 节是数值实验；第 7 节结论。完整证明放在附录 C；自动生成的实验数值表在附录 B。
-
-### 1.3 与原 proposal 相比的修订记录
-
-写第一稿时（仓库中 `report.md` 早期版本，可在 git 历史里查）我们采用了 E 综合路线，写到一半发现一些问题——比如 Nesterov 在所有 $\kappa$ 下都"600 步未收敛"、Muon 在 Frobenius 二次上发散却用"几何错配"圆过去、Sophia/exp24 ablation 大量未收敛但用"机制差异"解释。这些都是我们诚实地不满意的地方。
-
-第二稿（即本文）做了如下重大改动：
-
-- **方向重塑**：从 E 综合改为 C 路线（Muon 为核心），减少 5 条机制的并列罗列，让 Newton–Schulz 成为贯穿全文的主线。
-- **修复 7 个不收敛实验**：把 Nesterov 改成强凸版（不是 Su–Boyd–Candès 的 $\beta_k=(k-1)/(k+2)$ 阶梯版）；exp12 改用谱范数恢复目标；exp15 Sophia 按 Liu et al. 2023 的 Sophia-H 风格用 Hessian 对角；NS 加分支处理胖矩阵；ablation 每个配置单独扫学习率；$\kappa$ 扫描的 MAX_ITER 按理论上界动态选取。
-- **补完整证明**：定理 2、3、4、6 都有完整代数推导，附录 C 详尽。
-- **新增 6 个前沿实验**：HB ≡ Cheb 等价（E25）、Adam 极限环（E26）、Chebyshev-NS 五阶（E27）、Muon 谱范数 trust-region（E28）、NAG-ODE 相图（E29）、NS 收敛盆 $\sqrt 3$ 直接观测（E30）。
-
-下文涉及到的所有图、所有数字，都能通过 `bash scripts/check_repro.sh` 一键复现；JSON 摘要在 `data/experiment_results.json`。
 
 ---
 
@@ -140,7 +126,7 @@ $$
 U = \widehat U V^\top, \quad H = V \Sigma V^\top.
 $$
 
-我们在第 4 节会证明 Muon 的更新方向就是 $-U$，并解释这就是谱范数 trust-region 最速下降。
+我们在第 4 节会证明 Muon 的更新方向就是 $-U$，并解释这就是谱范数 trust-region 线性子问题的最速下降方向。
 
 ---
 
@@ -189,7 +175,7 @@ $$
 \rho^*_{\mathrm{HB}} = \frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1}.
 $$
 
-完整证明：附录 C.2，关键是写出 $T(\lambda)$ 特征方程 $z^2 - (1-\eta\lambda+\beta) z + \beta = 0$ 并选 $(\eta,\beta)$ 使判别式恰好为零（双重特征值）。这是 Chebyshev-型最优。
+完整证明：附录 C.2，关键是写出 $T(\lambda)$ 特征方程 $z^2 - (1-\eta\lambda+\beta) z + \beta = 0$ 并选 $(\eta,\beta)$ 使端点模态达到同一最坏谱半径、区间内部模态不超过该半径。这是 Chebyshev-型最优。
 
 **与 GD 对比**：$\kappa = 100$ 时 $\rho^*_{\mathrm{HB}} \approx 0.818$，比 GD 的 $0.980$ 加速因子约 $\log(1/0.818)/\log(1/0.980) \approx 9.9\times$。实验 2 在 $\kappa \in [10, 1000]$ 上数值验证（图 2）。
 
@@ -199,14 +185,10 @@ $$
 y_k = x_k + \beta(x_k - x_{k-1}),\quad x_{k+1} = y_k - \eta\,\nabla f(y_k),
 $$
 
-取 $\eta = 1/L$, $\beta = (\sqrt{\kappa}-1)/(\sqrt{\kappa}+1)$。在二次问题上两者收敛率同阶。实验 11（图 11）显示：$\kappa = 100$ 时 Nesterov 70 步达 $10^{-6}$、Polyak HB 98 步、GD 439 步——Nesterov 略快于 Polyak（这是修复后的结果；旧版本因实现错误显示 Nesterov 不收敛）。
+取 $\eta = 1/L$, $\beta = (\sqrt{\kappa}-1)/(\sqrt{\kappa}+1)$。在二次问题上两者收敛率同阶。实验 11（图 11）显示：$\kappa = 100$ 时 Nesterov 70 步达 $10^{-6}$、Polyak HB 68 步、GD 439 步——两者同属 $\sqrt\kappa$ 级加速，具体步数受常数与初值影响。
 
-**核心结果——定理 4（Heavy-ball 与 Chebyshev 半迭代等价）**  
-对二次问题 $f(x) = \tfrac{1}{2} x^\top A x - b^\top x$，Polyak 最优 Heavy-ball 迭代与 Chebyshev 半迭代（Hageman–Young 形式，见 `src/chebyshev.py`）渐近等价：两者的迭代序列 $\{x_k\}$ 满足
-
-$$
-\|x_k^{\mathrm{HB}} - x_k^{\mathrm{Cheb}}\|_2 \to 0,\quad k \to \infty.
-$$
+**核心结果——定理 4（Heavy-ball 是 Chebyshev 半迭代的定常极限）**  
+对二次问题 $f(x) = \tfrac{1}{2} x^\top A x - b^\top x$，Chebyshev 半迭代（Hageman–Young 形式，见 `src/chebyshev.py`）使用时变系数 $\omega_k$；当 $\omega_k$ 收敛到不动点 $\omega_\infty$ 后，其递推退化为 Polyak 最优 Heavy-ball 形式。也就是说，Polyak HB 可视为 Chebyshev 半迭代的**定常极限/定常近似**，而不是逐步完全相同的迭代。
 
 **证明思路**（完整版见附录 C.3）：Chebyshev 半迭代第 $k$ 步形式为
 
@@ -214,11 +196,11 @@ $$
 x_{k+1} = \omega_{k+1}\left(\frac{r_k}{d} + x_k - x_{k-1}\right) + x_{k-1},
 $$
 
-其中 $\omega_k$ 按 $\omega_{k+1} = 1/(1 - \sigma^2 \omega_k / 4)$、$\omega_1 = 1/(1 - \sigma^2/2)$ 递推，$\sigma = (L-\mu)/(L+\mu)$。展开并令 $\omega_k \to \omega_\infty$（不动点），解出 $\omega_\infty = 2/(1 + \sqrt{1-\sigma^2})$。可验证 $\omega_\infty = 1 + \beta^*$，故 Chebyshev 在 $k\to\infty$ 退化为定常 Heavy-ball。$\square$
+其中 $\omega_k$ 按 $\omega_{k+1} = 1/(1 - \sigma^2 \omega_k / 4)$、$\omega_1 = 1/(1 - \sigma^2/2)$ 递推，$\sigma = (L-\mu)/(L+\mu)$。展开并令 $\omega_k \to \omega_\infty$（不动点），解出 $\omega_\infty = 2/(1 + \sqrt{1-\sigma^2})$。可验证 $\omega_\infty = 1 + \beta^*$，故 Chebyshev 在系数收敛后退化为定常 Heavy-ball。$\square$
 
-**数值验证（实验 25）**：在 $\kappa = 100$, $d = 20$ 上跑 200 步，两者最终 $f - f^*$ 差距为 $\mathbf{1.14 \times 10^{-13}}$——**完全在机器精度内的等价**（图 25）。
+**数值验证（实验 25）**：在 $\kappa = 100$, $d = 20$ 上跑 200 步，两者末段 $f - f^*$ 差距为 $\mathbf{1.7 \times 10^{-13}}$（图 25）。早期两者可有明显差异，这正体现了 Chebyshev 的时变系数尚未进入定常区。
 
-这个定理是把课内 Chebyshev/CG 与现代动量法直接挂钩的桥梁：**Polyak 不是凭空想出来的，他实际上做了 Chebyshev 半迭代的定常近似。** 这是我们写这篇报告最得意的一段。
+这个定理是把课内 Chebyshev/CG 与现代动量法直接挂钩的桥梁：**Polyak 不是凭空想出来的，它可以解释为 Chebyshev 半迭代的定常近似。**
 
 ### 3.3 Adam = 动态 Jacobi 预条件 + 极限环现象
 
@@ -236,7 +218,7 @@ $$
 代入统一模板：$P_k = \eta\,\mathrm{diag}(\sqrt{\hat v_k} + \varepsilon)^{-1}$，这是一个**动态对角预条件**。
 
 **命题 3（Adam 与 Jacobi 预条件）**  
-设 $\beta_1 = 0$（无动量）、$v_k$ 进入稳态时近似 $v_k \approx \mathbb{E}[g \odot g]$。对二次目标 $f(x) = \tfrac{1}{2} x^\top A x$ 在均匀分布的初值上，$\mathbb{E}[g \odot g] = \mathrm{diag}(A^2 \Sigma_x)$（其中 $\Sigma_x = \mathbb{E}[x x^\top]$）。当 $A$ 对角且 $\Sigma_x \propto I$ 时
+设 $\beta_1 = 0$（无动量）、$v_k$ 进入稳态时近似 $v_k \approx \mathbb{E}[g \odot g]$。对二次目标 $f(x) = \tfrac{1}{2}(x-x^*)^\top A (x-x^*)$，令 $\Sigma_x=\mathbb{E}[(x-x^*)(x-x^*)^\top]$，则 $\mathbb{E}[g \odot g] = \mathrm{diag}(A\Sigma_x A^\top)$。当 $A$ 对角且 $\Sigma_x \propto I$ 时
 
 $$
 P_k \approx \eta\,\mathrm{diag}(A)^{-1},
@@ -278,7 +260,7 @@ $$
 若 $X_0$ 满足 $\sigma_{\min}(X_0) > 0$ 且 $\sigma_{\max}(X_0) < \sqrt 3$，则 (4.1) 二次收敛到 $G$ 的极分解正交因子 $U = U_{G} V_{G}^\top$。具体地，令 $E_k = X_k^\top X_k - I$，则
 
 $$
-E_{k+1} = -\tfrac{1}{2} E_k^2 \left(3 I + E_k\right) \cdot \tfrac{1}{4}, \tag{4.2}
+E_{k+1} = -\tfrac{1}{4} E_k^2 \left(3 I - E_k\right), \tag{4.2}
 $$
 
 故 $\|E_{k+1}\|_F \le \tfrac{1}{4}\|E_k\|_F^2 (3 + \|E_k\|_F)$，即 $\|E_k\|_F$ 二次衰减。
@@ -313,10 +295,10 @@ $$
 
 当 $\|E_k\|_F < 1$ 时 $\|E_{k+1}\|_F < \tfrac{1}{4}\|E_k\|_F^2 \cdot 4 = \|E_k\|_F^2$，即**二次收敛**。$\square$
 
-> **注**：上面推导的关键标识 $E_{k+1} = -\tfrac{1}{4} E_k^2 (3 I - E_k)$ 与正文摘要中的 $E_{k+1} = -\tfrac{1}{2}E_k^2(3I+E_k)/4$ 等价（符号 $\mp$ 视 $G_k - I$ 的定义而定）。
+> **注**：若改用 $\widetilde E_k = I - X_k^\top X_k$，则同一递推可写成 $\widetilde E_{k+1}=\tfrac{1}{4}\widetilde E_k^2(3I+\widetilde E_k)$；本文后续统一采用 $E_k=X_k^\top X_k-I$。
 
 **收敛盆 $(0, \sqrt 3)$ 的标量证明**  
-设 $\sigma$ 是 $X_k$ 的某个奇异值，则 $X_{k+1}$ 对应奇异值 $\sigma(3-\sigma^2)/2$。函数 $\varphi(\sigma) = \sigma(3-\sigma^2)/2$ 在 $\sigma \in (0, \sqrt 3)$ 时 $\varphi(\sigma) \in (0, 1]$ 并以 $\sigma = 1$ 为吸引不动点（$\varphi'(1) = 0$）；在 $\sigma > \sqrt 3$ 时 $|\varphi(\sigma)| > \sigma$，**单调发散**。
+设 $\sigma$ 是 $X_k$ 的某个奇异值，则 $X_{k+1}$ 对应奇异值的绝对值由 $\varphi(\sigma)=\sigma(3-\sigma^2)/2$ 控制。函数在 $\sigma \in (0,\sqrt3)$ 内保持在吸引盆中，并以 $\sigma=1$ 为吸引不动点（$\varphi'(1)=0$）；当 $\sigma>\sqrt3$ 时，第一步会越过该吸引盆，随后通常进入发散轨道。这里的关键结论是收敛盆为 $(0,\sqrt3)$，而不是每一步都按 $|\varphi(\sigma)|>\sigma$ 单调增大。
 
 **实验 30（图 30）直接观察**：在 100 个初值 $\sigma_0 \in [0.05, 2.5]$ 上跑 NS，记录 40 步后 $|\sigma^2 - 1|$。结果：
 
@@ -329,34 +311,32 @@ $$
 
 **实验 3、9、23 数值表**（迭代到 $\|X^\top X - I\|_F < 10^{-6}$ 的步数）：
 
-| 矩阵形状 | 标准 3 阶 NS | 5 阶 Higham NS |
+| 矩阵形状 | 标准 3 阶 NS | 五次多项式 Higham NS |
 |---------|---------------|----------------|
 | $8\times 8$ | 11 | $\le 5$（实测 6）|
 | $16\times 16$ | 15 | $\le 8$（实测 8） |
 | $32\times 24$ | 10 | $\le 6$（实测 7） |
-| $\mathbf{8\times 32}$（胖） | **7（修复后）** | — |
+| $\mathbf{8\times 32}$ | **7** | — |
 
-注：**修复前** 8×32 胖矩阵 NS 完全发散（$\|G\|_F \to 5$），原因是原实现假设 $m \ge n$ 没分支判断。修复方法：先对 $X^\top$ 做 NS，再转置回来。代码在 `src/newton_schulz.py:newton_schulz_iterate`。
+### 4.2 五次多项式 Higham 加速
 
-### 4.2 五阶 Higham 加速
-
-实验 27 用 Higham (2008, eq. 8.20) 五阶多项式
+实验 27 用 Higham (2008, eq. 8.20) 五次多项式
 
 $$
 X_{k+1} = \tfrac{1}{8}\bigl(15 X_k - 10 X_k(X_k^\top X_k) + 3 X_k(X_k^\top X_k)^2\bigr),
 $$
 
-对应 $p(\sigma) = (15 - 10\sigma^2 + 3\sigma^4)/8$。可验证 $p(1) = 1$、$p'(1) = p''(1) = 0$，即**三阶接触**于 $\sigma = 1$。收敛阶为 5。
+对应 $p(\sigma) = (15 - 10\sigma^2 + 3\sigma^4)/8$，迭代映射为 $\phi(\sigma)=\sigma p(\sigma)$。可验证 $\phi(1)=1$、$\phi'(1)=\phi''(1)=0$，因此在 $\sigma=1$ 附近比三阶 Newton–Schulz 有更高阶的误差消除；本文称其为**五次多项式版** Higham 迭代，避免把“多项式次数”与“误差收敛阶”混同。
 
 实验 27 数据：
 
-| 矩阵 | 5 步 3 阶 NS | 5 步 5 阶 NS |
+| 矩阵 | 5 步标准 NS | 5 步五次多项式 NS |
 |------|--------------|--------------|
 | $16 \times 8$  | $\sim 10^{-1}$ | $\mathbf{3.0\times 10^{-16}}$ |
 | $32 \times 16$ | $\sim 10^{-1}$ | $\mathbf{6.1\times 10^{-16}}$ |
 | $64 \times 32$ | $\sim 10^{-1}$ | $\mathbf{8.9\times 10^{-16}}$ |
 
-5 阶版**5 步达机器精度**，3 阶要 11–15 步——这就是 arXiv 2506.10935 用 Chebyshev/Remez 算法寻找最优 NS 系数的动机。代码在 `src/newton_schulz.py:chebyshev_ns_iterate`。
+五次多项式版**5 步达机器精度**，标准三阶 NS 要 11–15 步——这就是 arXiv 2506.10935 用 Chebyshev/Remez 算法寻找最优 NS 系数的动机。代码在 `src/newton_schulz.py:chebyshev_ns_iterate`。
 
 ### 4.3 Muon 优化器：谱范数 trust-region
 
@@ -366,16 +346,16 @@ Muon 的更新规则（Jordan et al. 2024）：
 2. 用 Newton–Schulz 把 $M_k$ 正交化得 $\widetilde M_k \approx U_k V_k^\top$（$M_k = U_k \Sigma_k V_k^\top$）；
 3. $W_{k+1} = W_k - \eta \widetilde M_k$。
 
-**Kovalev (2025) 的核心结果**：正交化方向 $-U V^\top$ 是**谱范数最速下降方向**。
+**Kovalev (2025) 的核心结果**：正交化方向 $-U V^\top$ 是**谱范数 trust-region 线性子问题的最速下降方向**。
 
 **定理 7（极分解的 trust-region 最优性）**  
 对任意 $G \in \mathbb{R}^{m\times n}$（$\mathrm{rank}(G) = r > 0$），
 
 $$
-\arg\min_{\substack{\Delta \in \mathbb{R}^{m\times n}\\ \|\Delta\|_2 \le t}} \langle G, \Delta\rangle_F = -t\,U V^\top,
+-t\,U V^\top \in \arg\min_{\substack{\Delta \in \mathbb{R}^{m\times n}\\ \|\Delta\|_2 \le t}} \langle G, \Delta\rangle_F,
 $$
 
-其中 $G = U \Sigma V^\top$ 是 SVD。
+其中 $G = U \Sigma V^\top$ 是紧 SVD。若 $G$ 秩亏，最优解一般不唯一；上式给出一个标准最优解。
 
 **证明**  
 设 $\Delta = \widetilde U \widetilde\Sigma \widetilde V^\top$，$\|\Delta\|_2 = \widetilde\sigma_{\max} \le t$。
@@ -390,11 +370,11 @@ $$
 |\mathrm{tr}(\Delta^\top G)| \le \sum_{i=1}^{r} \sigma_i(\Delta) \sigma_i(G) \le t \sum_i \sigma_i(G) = t\,\|G\|_*,
 $$
 
-其中 $\|G\|_*$ 是核范数。等号在 $\widetilde U = U$、$\widetilde V = V$、$\widetilde\Sigma = t I_r$ 时取到，对应 $\Delta = -t U V^\top$（取负号使 $\langle G, \Delta\rangle_F$ 取最小负值）。$\square$
+其中 $\|G\|_*$ 是核范数。等号可由 $\widetilde U = U$、$\widetilde V = V$、$\widetilde\Sigma = t I_r$ 取到，对应 $\Delta = -t U V^\top$（取负号使 $\langle G, \Delta\rangle_F$ 取最小负值）。若存在零奇异值方向，还可在这些方向上加入不改变目标值且不破坏谱范数约束的分量，因此最优解不必唯一。$\square$
 
 **含义**：Muon 在约束 $\|W_{k+1} - W_k\|_2 \le \eta$ 的谱范数 trust-region 上做线性逼近最速下降。这就是为什么 Frobenius 梯度下降（GD）和 Muon 不必在 Frobenius 损失上保持一致：**它们各自最小化的是不同范数下的线性逼近**。
 
-### 4.4 Muon 在合适目标上严格下降（实验 12、28）
+### 4.4 Muon 在匹配谱范数几何的目标上下降（实验 12、28）
 
 为让 Muon 在数值实验上真正展示其优势，实验 12（图 12）和 28（图 28）设计了**谱范数恢复目标**
 
@@ -402,7 +382,7 @@ $$
 \min_{W \in \mathbb{R}^{m\times n}} f(W) = \tfrac{1}{2} \|W - W^*\|_\sigma^2,
 $$
 
-其中 $\|\cdot\|_\sigma$ 是谱范数（用顶奇异值）。在这个目标上 Muon 的正交化方向是真正的最速下降。
+其中 $\|\cdot\|_\sigma$ 是谱范数（用顶奇异值）。该目标用于展示 Muon 的谱范数 trust-region 几何：Muon 对当前 Frobenius 梯度做极分解正交化，正好对应定理 7 的线性化子问题方向。由于谱范数平方目标一般非光滑，这里不把它表述为全局意义下每一步精确最速下降。
 
 实验 12 数据（80 步、$m = 16$、$n = 8$）：
 
@@ -465,7 +445,7 @@ $$
 - 跑离散 NAG ($\eta = 1/L$)；
 - 跑离散 HB（Polyak 最优）。
 
-在连续时间 $t = \sqrt\eta k$ 下三者轨迹基本重合（图 29 左图）。2D 相图（右图）显示 NAG-ODE 是平滑的"螺旋下降"，离散 NAG 是同一螺旋的步长 $\sqrt\eta$ 离散采样。这把"优化算法 = ODE 离散化"的论断从理论变成了**直接可视的实验**。
+在连续时间 $t = \sqrt\eta k$ 下，离散 NAG 与 AVD-ODE 呈现相近的下降相图；Polyak HB 作为另一种二阶加速机制放在同图中对照，但它的连续极限并不是 (5.1)。2D 相图（右图）显示 NAG-ODE 是平滑的"螺旋下降"，离散 NAG 可看成同一连续动力系统的步长 $\sqrt\eta$ 离散采样。这把"部分优化算法可由 ODE 离散化理解"的论断从理论变成了**直接可视的实验**。
 
 ![exp29](../figures/exp29_nag_ode.png)
 
@@ -495,8 +475,8 @@ bash scripts/check_repro.sh       # 一键：pytest + 实验 + 生成附录表
 
 | 编号 | 主题 | 图 | 关键数值 |
 |------|------|------|----------|
-| 1 | $\kappa\in\{10,100,1000\}$ GD/HB/Adam 收敛 | `exp1_convergence.png` | $\kappa{=}100$ HB 98 步、Adam 288 步、GD 439 步 |
-| 1b | $\kappa{=}100$ 6 方法全景 | `exp1b_full_panel.png` | Jacobi 1 步、Nesterov 64 步 |
+| 1 | $\kappa\in\{10,100,1000\}$ GD/HB/Adam 收敛 | `exp1_convergence.png` | $\kappa{=}100$ HB 68 步、Adam 288 步、GD 439 步 |
+| 1b | $\kappa{=}100$ 6 方法全景 | `exp1b_full_panel.png` | Polyak HB 68 步、Nesterov 70 步 |
 | 1ms | 多种子带 | `exp1_multiseed.png` | seeds=[0,1,2,42,123] IQR 带 |
 | 2 | Polyak HB 谱半径理论 | `exp2_spectral_radius.png` | $\kappa{=}100$ 时 $\rho^*_{\mathrm{HB}}{=}0.818$, $\rho_{\mathrm{GD}}{=}0.980$ |
 | 2b | 模态衰减 | `exp2_modal_decay.png` | μ/L 模态同步衰减（等谱半径） |
@@ -504,51 +484,38 @@ bash scripts/check_repro.sh       # 一键：pytest + 实验 + 生成附录表
 | 3b | NS vs SVD 极因子距离 | `exp3_polar_distance.png` | 10 步内达机器精度 |
 | **4** | Adam $\kappa_{\mathrm{eff}}$ 演化（分阶段） | `exp4_precond_kappa.png` | $\kappa{=}10$ 时 fast-adapt 配置降到 16.7 |
 | 5 | Richardson 步长敏感性 | `exp5_step_sensitivity.png` | $\eta^*{=}0.0198$ 处 $\rho{=}0.980$ |
-| 6 | 经验率 vs 理论谱半径 | `exp6_empirical_rate.png` | $\kappa{=}1000$ momentum 相对误差 0.1% |
-| 6b | log-linear 拟合 | `exp6_log_linear_fit.png` | 数据曲线与理论参考线平行 |
+| 6 | 经验率 vs 理论谱半径 | `exp6_empirical_rate.png` | GD 的经验率与理论谱半径吻合；HB 用谱半径实验 2 验证 |
+| 6b | log-linear 拟合 | `exp6_log_linear_fit.png` | GD 拟合清晰；HB 受瞬态和目标函数平方尺度影响 |
 | 7 | $\beta$ 敏感性 | `exp7_beta_*.png` | 默认 $\beta{=}0.9$ 比 Polyak $\beta^*{=}0.669$ 慢 2.7× |
 | 8 | Jacobi vs Adam（对角 vs 稠密） | `exp8_jacobi_comparison.png` | 对角 A: Jacobi 1 步；稠密 A: $\kappa_{\rm eff}{=}312$ |
 | 9 | NS 收敛域扫描 | `exp9_ns_domain.png` | $c \approx 1$ 最快 14 步；$c{=}0.3$ 发散 |
 | 10 | 2D 优化轨迹 + 收敛曲线（修正） | `exp10_trajectories_2d.png` | Nesterov 路径长 7.6、Adam 8.2（但 Adam 末距 3.3，Nesterov 0.009）|
-| **11** | Nesterov vs Polyak（修复后均收敛） | `exp11_nesterov_vs_polyak.png` | $\kappa{=}1000$: Nest 237、HB 340 步 |
+| **11** | Nesterov vs Polyak（修复后均收敛） | `exp11_nesterov_vs_polyak.png` | $\kappa{=}1000$: Nest 237、HB 256 步 |
 | **12** | Muon 在谱范数 vs Frobenius 损失 | `exp12_matrix_muon.png` | 谱范数 Muon 0.037、Frob Muon 63266 |
 | 13 | Adam lr/κ 扫描 | `exp13_adam_lr_sweep.png` | $\kappa{=}100$ 最优 lr$\sim 0.35$ |
 | 14 | SGD/Adam 噪声地板 | `exp14_sgd_noise.png` | $\sigma{=}0.05$ 时 Adam 较 SGD 抗噪 |
 | **15** | Sophia-H vs Adam（修复后均收敛） | `exp15_sophia.png` | Adam 170 步、Sophia 236 步 |
-| 17 | CG/PCG vs 一阶 + Chebyshev 理论上界 | `exp17_pcg_baseline.png` | $\kappa{=}1000$: CG 39 步、Adam 376 步 |
+| 17 | CG/PCG vs 一阶 + Chebyshev 理论上界 | `exp17_pcg_baseline.png` | $\kappa{=}1000$: CG 30 步、Adam 未在 2000 步内达阈值 |
 | 21 | 特征模态能量衰减 | `exp21_eigenmode_decay.png` | Polyak 同步衰减、GD 主导慢模 |
 | 22 | $(\beta,\eta)$ 谱半径热力图 | `exp22_beta_eta_heatmap.png` | 含稳定边界 $\rho{=}1$ 等高线 |
 | **23** | 瘦/方/胖矩阵 NS（胖矩阵修复） | `exp23_ns_rectangular.png` | $8{\times}32$ 7 步达 $10^{-6}$ |
 | **24** | Adam $(\beta_1,\beta_2)$ ablation（lr 已扫描） | `exp24_adam_ablation.png` | 仅 $(0.9,0.999)$ 在 best lr 下 173 步收敛 |
 | 扫 | $\kappa$ 扫描（MAX_ITER 动态） | `exp_kappa_scan.png` | GD: $\propto \kappa$；HB: $\propto \sqrt\kappa$ |
-| **25** | **HB ≡ Chebyshev 半迭代等价** | `exp25_hb_chebyshev.png` | max gap diff $= 1.14\times 10^{-13}$ |
+| **25** | **HB 是 Chebyshev 半迭代定常极限** | `exp25_hb_chebyshev.png` | 末段 max gap diff $= 1.7\times 10^{-13}$ |
 | **26** | Adam 2-极限环 | `exp26_adam_limit_cycle.png` | 第 2 组配置：$x^\pm{=}(0.025,-0.025)$ |
-| **27** | 5 阶 Higham NS vs 3 阶 | `exp27_chebyshev_ns.png` | 5 阶 5 步达 $10^{-16}$，3 阶要 10+ 步 |
+| **27** | 五次多项式 Higham NS vs 标准 3 阶 | `exp27_chebyshev_ns.png` | 五次多项式版 5 步达 $10^{-16}$，标准 NS 要 10+ 步 |
 | **28** | Muon 谱范数 trust-region（5 种子） | `exp28_muon_trust_region.png` | Muon 0.028~0.037 一致 |
-| **29** | NAG-ODE 解 vs 离散 NAG/HB | `exp29_nag_ode.png` | 连续时间下三者轨迹重合 |
+| **29** | NAG-ODE 解 vs 离散 NAG/HB | `exp29_nag_ode.png` | NAG 与 AVD-ODE 相近，HB 作为对照 |
 | **30** | NS 收敛盆 $\sqrt 3$ | `exp30_ns_basin.png` | 11 个 $\sigma_0{>}\sqrt 3$ 全发散 |
-
-**粗体编号是相对前一稿被修复或新增的实验。**
 
 ### 6.3 一些重要图的解读
 
 **图 1（exp1）**：$\kappa \in \{10, 100, 1000\}$ 的同图三栏。Momentum 在所有 $\kappa$ 上显著快于 GD，符合 $\sqrt\kappa$ vs $\kappa$ 阶。$\kappa = 1000$ 时 Adam 1133 步收敛，GD 在 MAX_ITER=2000 内未达 $10^{-6}$——这是 $\kappa$ 与 MAX_ITER 的明确折衷而非算法失败（理论需 $\approx 13800$ 步）。
 
-**图 11（exp11）— 修复纪事**  
-旧版本 Nesterov 因实现错误（在 $x_k$ 而非 $y_k$ 处取梯度）导致所有 $\kappa$ 不收敛。本次修复后：
-
-| $\kappa$ | Nesterov 收敛步数 | Polyak HB 收敛步数 |
-|----------|--------------------|--------------------|
-| 10 | 20 | 28 |
-| 100 | 70 | 98 |
-| 1000 | 237 | 340 |
-
-Nesterov 略快于 Polyak，理论上是因为 $\eta = 1/L$ 用了 $L$ 而非 $2/(L+\mu)$，且 lookahead 在 $y_k$ 处取梯度有更小的局部截断误差。这点 Shi et al. 2021 的高分辨率 ODE 给出了解释（参 §5.3）。
-
 **图 25（exp25）— 主结果**  
-$\kappa = 100$、200 步、Heavy-ball ≡ Chebyshev 半迭代：
+$\kappa = 100$、200 步、Heavy-ball 与 Chebyshev 半迭代的定常极限关系：
 
-- 左图：两者的 $f - f^*$ 曲线几乎完全重合，最大差距 $1.14 \times 10^{-13}$（机器精度）；
+- 左图：两者末段的 $f - f^*$ 曲线几乎完全重合，末 50 步最大差距 $1.7 \times 10^{-13}$（机器精度量级）；
 - 右图：$|e_k(\lambda)|$ Chebyshev 误差多项式在 $\lambda \in [\mu, L]$ 上的振荡形态，与多项式 minimax 理论一致。
 
 ![exp25](../figures/exp25_hb_chebyshev.png)
@@ -559,46 +526,28 @@ $\kappa = 100$、200 步、Heavy-ball ≡ Chebyshev 半迭代：
 ![exp26](../figures/exp26_adam_limit_cycle.png)
 
 **图 28（exp28）— Muon 的"主场"**  
-谱范数 trust-region 损失上，5 个种子 Muon 都收敛到 0.028~0.037 的稳定带；这是 Muon 在合适目标上**严格、可重复地下降**的证据。把同一个 Muon 算法搬到 Frobenius 损失上则会发散——这是几何上的本质差异，而非算法 bug。
+谱范数 trust-region 损失上，5 个种子 Muon 都收敛到 0.028~0.037 的稳定带；这是 Muon 的正交化方向与谱范数 trust-region 线性化几何相匹配的证据。把同一个 Muon 算法搬到 Frobenius 损失上则会发散——这是几何上的本质差异，而非算法 bug。
 
 ![exp28](../figures/exp28_muon_trust_region.png)
-
-### 6.4 修复纪事（透明度）
-
-实验—结论—图三者一致性是写报告时最容易松动的环节。下表诚实记录我们这次修了什么：
-
-| 实验 | 之前的问题 | 修复方案 |
-|------|------------|----------|
-| exp11 Nesterov | $\eta=1/L$ 配合错误状态更新→不收敛 | 改成强凸版 $y_k = x_k + \beta(x_k - x_{k-1})$，$x_{k+1} = y_k - \eta \nabla f(y_k)$ |
-| exp12 Muon | 在 Frobenius 二次上用 lr=0.005/L→发散；正文却说"演示几何" | 改用谱范数恢复目标（Muon 主场），同时保留 Frobenius 对照说明几何差异 |
-| exp15 Sophia | 简化版 $\gamma \cdot h$ + clip 阈值不当→不收敛 | 改成 Liu et al. 2023 Sophia-H 风格：用 Hessian 对角而非 $g^2$；$\rho=0.04$ |
-| exp23 8×32 胖矩阵 | NS 默认 $m\ge n$，胖矩阵 $X^\top X - I$ 错维度→不收敛 | 加分支：若 $m<n$ 先对 $X^\top$ 做 NS |
-| exp24 Adam ablation | 4 组配置都用同一 lr→3 组未收敛被错释为"机制差异" | 每组单独扫 lr 取最优；现在确认 $(0.9,0.999)$ 是唯一在 600 步内收敛者 |
-| exp_kappa_scan | MAX_ITER=600 固定→GD 在 $\kappa\ge 237$ 全部撞顶 | MAX_ITER 按 $\log(e_0/\epsilon)/\log(1/\rho^*)$ 动态计算 |
-| exp4 $\kappa_{\rm eff}$ | 单图、解释含糊 | 分两行 $(\beta_1,\beta_2)=(0.9,0.999)$ vs $(0,0.99)$，明示 bias correction 早期高 $\kappa_{\rm eff}$ 的代数原因 |
-
-这些不是 cosmetic 修补——每一个都需要重新跑实验、对齐 JSON、再校对正文数字。
 
 ---
 
 ## 7 结论
 
 1. **统一模板** $x_{k+1} = x_k - P_k g_k$ 把 GD（Richardson）、Heavy-ball（谱加速）、Adam（动态 Jacobi）、Sophia（对角 Hessian）、Muon（极分解）放在同一数值迭代框架下；不同 $P_k$ 对应不同的"古典"数值方法。
-2. **谱半径分析**精确预测二次问题上的收敛率：GD $\rho^* = (\kappa-1)/(\kappa+1)$、Polyak HB $\rho^* = (\sqrt\kappa-1)/(\sqrt\kappa+1)$；实验 6 经验拟合与理论在 $\kappa = 1000$ 时相对误差 0.1%。
-3. **HB ≡ Chebyshev 半迭代**（定理 4 + 实验 25）：两者最终 gap 差距 $1.14 \times 10^{-13}$；这从课内 CG/Chebyshev 视角解释了 Heavy-ball 不是凭空想的工程技巧而是 Chebyshev 半迭代的定常近似。
+2. **谱半径分析**精确预测二次问题上的收敛率：GD $\rho^* = (\kappa-1)/(\kappa+1)$、Polyak HB $\rho^* = (\sqrt\kappa-1)/(\sqrt\kappa+1)$；实验 2 直接验证 HB 的最坏谱半径，实验 6 用对数线性拟合检验 GD 的经验率。
+3. **HB 是 Chebyshev 半迭代的定常极限**（定理 4 + 实验 25）：两者末段 gap 差距 $1.7 \times 10^{-13}$；这从课内 CG/Chebyshev 视角解释了 Heavy-ball 不是凭空想的工程技巧而是 Chebyshev 半迭代的定常近似。
 4. **Newton–Schulz 二次收敛**有干净的递推 $E_{k+1} = -\tfrac{1}{4}E_k^2(3I - E_k)$，收敛盆 $(0, \sqrt 3)$ 由实验 30 在 100 个初值上直接观察证实——11 个 $\sigma_0 > \sqrt 3$ 全部发散。
-5. **Muon 的真本质**是谱范数 trust-region 最速下降（定理 7：von Neumann 迹不等式取等条件）；它在谱范数恢复目标上严格下降（实验 28，5 种子一致），在 Frobenius 损失上不下降是几何错配，与定理 7 完全吻合。
+5. **Muon 的真本质**是谱范数 trust-region 线性子问题的最速下降方向（定理 7：von Neumann 迹不等式取等条件）；它在谱范数恢复目标上稳定下降（实验 28，5 种子一致），在 Frobenius 损失上不下降是几何错配，与定理 7 的线性化解释一致。
 6. **Adam 2-极限环**（实验 26）复现 Bock & Weiß (2022)：即使最简凸 $f(x) = x^2/2$ 上 Adam 也可能不收敛——这是 ML 调参玄学背后的真实数值现象，AMSGrad/Sophia 等修正方案的动机正在于此。
-7. **NAG ↔ ODE**（实验 29）：AVD-ODE $\ddot X + (3/t)\dot X + \nabla f = 0$ 的 RK4 解与离散 NAG 在 $t = \sqrt\eta k$ 下完全重合，"优化算法 = ODE 离散化"是可看到的事实。
+7. **NAG ↔ ODE**（实验 29）：AVD-ODE $\ddot X + (3/t)\dot X + \nabla f = 0$ 的 RK4 解与离散 NAG 在 $t = \sqrt\eta k$ 下呈现相近轨迹；Polyak HB 放在同图中作为二阶加速对照。
 
 ### 7.1 不足之处
 
 - 神经网络实验缺失：聚焦可控二次模型与矩阵恢复，没有在 MLP/CNN 上验证 Muon 的实际加速。这部分本质上需要 GPU 集群，超出 8 周课程项目的范围。
-- Chebyshev-Remez 最优 NS 系数（arXiv 2506.10935）我们只用了 Higham 的经典五阶版，没有完整复现 Remez 算法求解。
+- Chebyshev-Remez 最优 NS 系数（arXiv 2506.10935）我们只用了 Higham 的经典五次多项式版，没有完整复现 Remez 算法求解。
 - AMSGrad / Adam-W 等 Adam 修正方案虽然在 §3.3 提及，但没有跟 Bock–Weiß 极限环做精确对照实验。
 - 高分辨率 ODE 在 §5.3 仅给出公式，没做相应离散化误差分析实验。
-
-这些都列在 `re_TODO.md` 的 "Future Work" 段。
 
 ---
 
@@ -622,7 +571,7 @@ $\kappa = 100$、200 步、Heavy-ball ≡ Chebyshev 半迭代：
 
 **矩阵迭代与极分解**
 11. Schulz, G. (1933). Iterative Berechnung der reziproken Matrix. *ZAMM*, 13, 57–59.
-12. Higham, N. J. (2008). *Functions of Matrices: Theory and Computation*. SIAM. （Newton–Schulz 收敛、五阶公式 8.20）
+12. Higham, N. J. (2008). *Functions of Matrices: Theory and Computation*. SIAM. （Newton–Schulz 收敛、五次多项式公式 8.20）
 13. Nakatsukasa, Y., & Higham, N. J. (2013). Stable and efficient spectral divide-and-conquer algorithms. *SIAM J. Sci. Comput.*
 14. Anonymous (2025). Accelerating Newton-Schulz via Chebyshev polynomials. *arXiv:2506.10935*.
 
@@ -647,7 +596,7 @@ $\kappa = 100$、200 步、Heavy-ball ≡ Chebyshev 半迭代：
 | `src/quadratic.py` | 病态二次构造、目标、梯度 |
 | `src/optimizers.py` | gd / momentum / nesterov / adam / adamw / sophia / jacobi |
 | `src/momentum_spectrum.py` | Polyak 谱半径计算 |
-| `src/newton_schulz.py` | NS 3 阶 + 5 阶 Higham + 胖矩阵分支 |
+| `src/newton_schulz.py` | 标准 NS + 五次多项式 Higham + 胖矩阵分支 |
 | `src/chebyshev.py` | Chebyshev 半迭代 + minimax 误差多项式 + HB-Polyak 形式 |
 | `src/spectral_trust_region.py` | 谱范数恢复问题 + Muon/GD/Adam 对照 |
 | `src/adam_limit_cycle.py` | 标量 Adam 迭代 + 2-极限环检测 |
@@ -679,17 +628,17 @@ $\kappa = 100$、200 步、Heavy-ball ≡ Chebyshev 半迭代：
 
 | $\kappa$ | GD | Polyak HB | Adam |
 |----------|----|-----------|------|
-| 10 | 39 | 28 | 162 |
-| 100 | 439 | 98 | 288 |
-| 1000 | — (>2000) | 340 | 1133 |
+| 10 | 39 | 17 | 162 |
+| 100 | 439 | 68 | 288 |
+| 1000 | — (>2000) | 256 | 1133 |
 
-### 实验 11：Nesterov vs Polyak HB（修复后）
+### 实验 11：Nesterov vs Polyak HB
 
 | $\kappa$ | Nesterov | Polyak HB |
 |----------|----------|-----------|
-| 10 | 20 | 28 |
-| 100 | 70 | 98 |
-| 1000 | 237 | 340 |
+| 10 | 20 | 17 |
+| 100 | 70 | 68 |
+| 1000 | 237 | 256 |
 
 ### 实验 12：Muon 在两种损失上
 
@@ -704,11 +653,11 @@ $\kappa = 100$、200 步、Heavy-ball ≡ Chebyshev 半迭代：
 |-----|----|
 | 200 步后 $f - f^*$（HB）  | $10^{-30}$ |
 | 200 步后 $f - f^*$（Cheb）| $10^{-30}$ |
-| max gap diff（末 50 步） | $1.14 \times 10^{-13}$ |
+| max gap diff（末 50 步） | $1.7 \times 10^{-13}$ |
 
-### 实验 27：5 阶 vs 3 阶 NS（迭代到 $10^{-16}$）
+### 实验 27：五次多项式版 vs 标准 NS（迭代到 $10^{-16}$）
 
-| 形状 | 3 阶 NS | 5 阶 Higham NS |
+| 形状 | 标准 NS | 五次多项式 Higham NS |
 |------|---------|----------------|
 | $16{\times}8$ | 11 步 | **5 步** |
 | $32{\times}16$ | 13 步 | **6 步** |
@@ -781,19 +730,7 @@ $$
 
 两式相加：$\eta(L - \mu) = 4\sqrt\beta$，即 $\sqrt\beta = \eta(L - \mu)/4$。两式相减：$1 - \eta(\mu+L)/2 + \beta = 0$，即 $\eta(\mu+L)/2 = 1 + \beta$，$\eta = 2(1+\beta)/(\mu+L)$。
 
-联立解：$\sqrt\beta = (1+\beta)(L-\mu)/(2(L+\mu))$，整理 $4\beta(L+\mu)^2 = (1+\beta)^2(L-\mu)^2$。展开
-
-$$
-4\beta(L+\mu)^2 = (L-\mu)^2 + 2\beta(L-\mu)^2 + \beta^2(L-\mu)^2,
-$$
-
-即 $\beta^2(L-\mu)^2 - 2\beta[(L+\mu)^2 \cdot 2 - (L-\mu)^2] + (L-\mu)^2 = 0$。化简
-
-$$
-\beta^2(L-\mu)^2 - 2\beta(L+\mu)^2 \cdot 2 + 2\beta(L-\mu)^2 + (L-\mu)^2 - \ldots
-$$
-
-直接用 $\sqrt\beta = \eta(L-\mu)/4$ 与 $\eta = 2(1+\beta)/(\mu+L)$ 消元更简单。代入：
+直接用 $\sqrt\beta = \eta(L-\mu)/4$ 与 $\eta = 2(1+\beta)/(\mu+L)$ 消元。代入：
 
 $$
 \sqrt\beta = \frac{2(1+\beta)(L-\mu)}{4(L+\mu)} = \frac{(1+\beta)(L-\mu)}{2(L+\mu)}.
@@ -833,7 +770,7 @@ $$
 
 $\square$
 
-### C.3 定理 4 完整证明（HB ≡ Chebyshev 半迭代）
+### C.3 定理 4 完整证明（HB 是 Chebyshev 半迭代的定常极限）
 
 Chebyshev 半迭代（Hageman–Young 形式）：
 
@@ -890,34 +827,22 @@ $\eta_\infty = \omega_\infty / d = \frac{4}{(\sqrt L+\sqrt\mu)^2} = \eta^*$. ✓
 
 $\beta_\infty = \omega_\infty - 1 = \frac{2(L+\mu) - (\sqrt L+\sqrt\mu)^2}{(\sqrt L+\sqrt\mu)^2} = \frac{2L + 2\mu - L - 2\sqrt{L\mu} - \mu}{(\sqrt L+\sqrt\mu)^2} = \frac{L - 2\sqrt{L\mu} + \mu}{(\sqrt L+\sqrt\mu)^2} = \frac{(\sqrt L - \sqrt\mu)^2}{(\sqrt L+\sqrt\mu)^2} = \beta^*$. ✓
 
-故 Chebyshev 半迭代在 $k \to \infty$ 退化为 Polyak 最优 Heavy-ball；两者**渐近等价**，与实验 25 的 $1.14 \times 10^{-13}$ 数值结果一致。$\square$
+故 Chebyshev 半迭代在系数收敛后退化为 Polyak 最优 Heavy-ball；这说明 Polyak HB 是 Chebyshev 半迭代的定常极限。实验 25 中末段 gap 差距 $1.7 \times 10^{-13}$，与该解释一致。$\square$
 
 ### C.4 命题 3 证明（Adam 与 Jacobi 预条件的关系）
 
 略证：$\beta_1 = 0$ 时 $\hat m_k = g_k / (1 - \beta_1^k) = g_k$；$v_k = (1-\beta_2)\sum_{j=1}^k \beta_2^{k-j}(g_j \odot g_j)$。在 $k\to\infty$ 与 $\beta_2 \to 1$ 极限下 $v_k$ 是 $g_j \odot g_j$ 的滑动平均，趋于 $\mathbb{E}[g \odot g]$。
 
-对二次问题 $f(x) = \tfrac{1}{2}(x - x^*)^\top A (x - x^*)$，$g(x) = A(x - x^*)$。若 $x - x^*$ 与 $A$ 的特征基**统计独立**且单位方差，则
+对二次问题 $f(x) = \tfrac{1}{2}(x - x^*)^\top A (x - x^*)$，$g(x) = A(x - x^*)$。若 $x - x^*$ 的协方差为 $\Sigma$，则
 
 $$
-\mathbb{E}[g \odot g] = \mathrm{diag}(A \mathbb{E}[(x - x^*)(x - x^*)^\top] A^\top) = \mathrm{diag}(A A^\top) = \mathrm{diag}(A)^2,
+\mathbb{E}[g \odot g] = \mathrm{diag}(A \Sigma A^\top).
 $$
 
-故 $\sqrt{\hat v_k} \approx \mathrm{diag}(A)$，$P_k = \eta\,\mathrm{diag}(\sqrt{\hat v_k})^{-1} \approx \eta\,\mathrm{diag}(A)^{-1}$——恰为 Jacobi 预条件器。$\square$
+特别地，当 $A$ 对角且 $\Sigma \propto I$ 时，$\mathbb{E}[g \odot g]\propto \mathrm{diag}(A)^2$。忽略比例常数与 $\varepsilon$ 后，$\sqrt{\hat v_k} \approx \mathrm{diag}(A)$，$P_k = \eta\,\mathrm{diag}(\sqrt{\hat v_k})^{-1} \approx \eta\,\mathrm{diag}(A)^{-1}$——恰为 Jacobi 预条件器。$\square$
 
 ### C.5 定理 6 二次收敛证明（已在 §4.1 给出）
 
 ### C.6 定理 7 证明（已在 §4.3 给出，von Neumann 迹不等式）
 
----
 
-## 附录 D：答辩一页备忘
-
-详见 `report/defense_one_page.md`。三幅代表图：
-
-1. **`exp25_hb_chebyshev.png`**：Heavy-ball ≡ Chebyshev 半迭代——"Polyak 不是工程灵感，是 Chebyshev 半迭代的定常近似"。
-2. **`exp28_muon_trust_region.png`**：Muon 在谱范数 trust-region 上 5 种子一致下降——"Muon 不是 Frobenius 最速下降，是谱范数最速下降"。
-3. **`exp30_ns_basin.png`**：Newton–Schulz 收敛盆 $\sqrt 3$ 直接观测——"定理 6 不是抽象的局部分析，可以肉眼看到"。
-
----
-
-*报告结束。如答辩追问其它细节，请见 `data/experiment_results.json` 与 `appendix_auto.md`。*

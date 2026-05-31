@@ -50,7 +50,7 @@ def test_chebyshev_ns_competitive_with_standard():
     _, errs_std = newton_schulz_iterate(g, max_iter=15)
     _, errs_cheb = chebyshev_ns_iterate(g, max_iter=15)
     assert errs_std[-1] < 1e-4
-    # 5 阶版本应该至少不显著差于 3 阶
+    # Higham 五次多项式版本应该至少不显著差于标准 NS
     assert errs_cheb[-1] < 1.0
 
 

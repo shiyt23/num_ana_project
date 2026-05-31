@@ -97,12 +97,13 @@ def chebyshev_ns_iterate(
     normalize: bool = True,
 ) -> tuple[list[np.ndarray], list[float]]:
     """
-    五阶 Newton-Schulz 极分解迭代（Higham, *Functions of Matrices*, eq. 8.20）：
+    五次多项式 Newton-Schulz 极分解迭代（Higham, *Functions of Matrices*, eq. 8.20）：
 
         X_{k+1} = (15 X_k - 10 X_k(X_k^T X_k) + 3 X_k(X_k^T X_k)^2) / 8
 
-    对应多项式 p(σ) = (15 - 10σ² + 3σ⁴)/8，满足 p(1)=1，p'(1)=p''(1)=0，
-    即三阶接触；故 |1 - σ p(σ)| = O((1-σ²)³)，收敛阶为 5。
+    对应多项式 p(σ) = (15 - 10σ² + 3σ⁴)/8。真正的标量迭代映射是
+    φ(σ)=σp(σ)，它满足 φ(1)=1、φ'(1)=φ''(1)=0，因此在 σ=1 附近
+    比标准三阶 Newton-Schulz 有更高阶的误差消除。这里的“五次”指多项式次数。
     收敛域为 σ ∈ (0, √3)，与三阶 NS 相同（同 Higham §8.6）。
     """
     x = g.copy().astype(float)

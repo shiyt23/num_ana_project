@@ -95,7 +95,7 @@ def _run_momentum(
     kappa = L / mu
     step = lr if lr is not None else 4.0 / (np.sqrt(L) + np.sqrt(mu)) ** 2
     if beta < 0:
-        beta = (np.sqrt(kappa) - 1) / (np.sqrt(kappa) + 1)
+        beta = ((np.sqrt(kappa) - 1) / (np.sqrt(kappa) + 1)) ** 2
 
     x, v = x0.copy(), np.zeros_like(x0)
     xs, fs, gs, ps = [x.copy()], [objective(a, b, x)], [gradient(a, b, x)], [np.eye(len(x)) * step]
