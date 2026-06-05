@@ -1,0 +1,109 @@
+\section{三大基线机制：GD、Heavy-ball、Adam}
+\label{sec:baselines}
+
+\subsection{GD 与 Richardson 迭代}
+
+GD 的更新 $x_{k+1} = x_k - \eta(Ax_k - b)$ 在数值分析的语言里就是求解 $Ax=b$ 的 \textbf{Richardson 迭代} \cite{saad2003}。预条件 $P_k = \eta I$ 是统一模板 \eqref{eq:unified} 的最简形式。
+
+\begin{algorithm}[htbp]
+  \caption{梯度下降（Richardson 迭代）}
+  \label{alg:gd}
+  \begin{algorithmic}[1]
+    \Require 矩阵 $A\succ 0$，向量 $b$，步长 $\eta\in(0,2/L)$，初值 $x_0$
+    \Ensure 近似解 $x_k$
+    \For{$k = 0,1,2,\ldots$}
+      \State $g_k \gets A x_k - b$
+      \State $x_{k+1} \gets x_k - \eta\, g_k$
+    \EndFor
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}[GD 在强凸二次上的线性收敛]
+\label{thm:gd}
+设 $A\succ 0$，谱在 $[\mu, L]$。取 $\eta \in (0, 2/L)$，则 GD 满足
+\[
+  \|x_{k+1} - x^*\|_2 \le \rho(\eta)\,\|x_k - x^*\|_2,\quad \rho(\eta) = \max_i |1 - \eta \lambda_i(A)|.
+\]
+最优步长 $\eta^* = 2/(\mu + L)$ 处 $\rho^* = (\kappa - 1)/(\kappa + 1)$。完整证明见附录~\ref{app:proofs}。
+\end{theorem}
+
+\textbf{实验对照}：$\kappa = 100$ 时 $\rho^* \approx 0.9802$；实验 5 在 200 个步长上验证 $\rho(\eta)$ 的 V 形；实验 6 用对数线性拟合得到 $\kappa = 1000$ 时 $\rho_{\mathrm{emp}} = 0.9959$，与理论 $0.998$ 相对误差 0.2\%。
+
+\subsection{Heavy-ball、Nesterov 与 Chebyshev 半迭代}
+
+\textbf{Polyak Heavy-ball} 更新
+\[
+  v_{k+1} = \beta v_k + g_k, \quad x_{k+1} = x_k - \eta v_{k+1}.
+\]
+在 $A$ 的特征基下，每个模态 $\lambda \in [\mu, L]$ 给出 $2\times 2$ 系统
+\[
+  \begin{bmatrix} x_{k+1} \\ x_k \end{bmatrix} = T(\lambda) \begin{bmatrix} x_k \\ x_{k-1} \end{bmatrix},\quad
+  T(\lambda) = \begin{bmatrix} 1-\eta\lambda+\beta & -\beta \\ 1 & 0 \end{bmatrix}.
+\]
+
+\begin{algorithm}[htbp]
+  \caption{Polyak Heavy-ball 方法}
+  \label{alg:hb}
+  \begin{algorithmic}[1]
+    \Require $A\succ 0$，$b$，步长 $\eta$，动量 $\beta$，初值 $x_0,x_{-1}$
+    \Ensure 近似解 $x_k$
+    \State $v_0 \gets 0$
+    \For{$k = 0,1,2,\ldots$}
+      \State $g_k \gets A x_k - b$
+      \State $v_{k+1} \gets \beta v_k + g_k$
+      \State $x_{k+1} \gets x_k - \eta\, v_{k+1}$
+    \EndFor
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}[Polyak 最优 Heavy-ball 谱半径]
+\label{thm:hb}
+取
+\[
+  \eta^* = \frac{4}{(\sqrt{L}+\sqrt{\mu})^2},\quad \beta^* = \left(\frac{\sqrt{L}-\sqrt{\mu}}{\sqrt{L}+\sqrt{\mu}}\right)^2,
+\]
+则所有模态 $\lambda \in [\mu, L]$ 的谱半径都等于 $\rho^*_{\mathrm{HB}} = (\sqrt{\kappa}-1)/(\sqrt{\kappa}+1)$ \cite{polyak1964}。完整证明见附录~\ref{app:proofs}。
+\end{theorem}
+
+\textbf{与 GD 对比}：$\kappa = 100$ 时 $\rho^*_{\mathrm{HB}} \approx 0.818$，比 GD 的 $0.980$ 加速因子约 $9.9\times$。实验 2 在 $\kappa \in [10, 1000]$ 上数值验证。
+
+\textbf{Nesterov 加速}：
+\[
+  y_k = x_k + \beta(x_k - x_{k-1}),\quad x_{k+1} = y_k - \eta\,\nabla f(y_k),
+\]
+取 $\eta = 1/L$, $\beta = (\sqrt{\kappa}-1)/(\sqrt{\kappa}+1)$。实验 11 显示：$\kappa = 100$ 时 Nesterov 70 步达 $10^{-6}$、Polyak HB 68 步、GD 439 步。
+
+\begin{theorem}[Heavy-ball 是 Chebyshev 半迭代的定常极限]
+\label{thm:hb-cheb}
+对二次问题 $f(x) = \tfrac{1}{2} x^\top A x - b^\top x$，Chebyshev 半迭代（Hageman--Young 形式）使用时变系数 $\omega_k$；当 $\omega_k$ 收敛到不动点 $\omega_\infty$ 后，其递推退化为 Polyak 最优 Heavy-ball 形式。即 Polyak HB 可视为 Chebyshev 半迭代的\textbf{定常极限}。完整证明见附录~\ref{app:proofs}。
+\end{theorem}
+
+\textbf{数值验证（实验 25）}：在 $\kappa = 100$, $d = 20$ 上跑 200 步，两者末段 $f - f^*$ 差距为 $\mathbf{1.7 \times 10^{-13}}$。这个定理是把课内 Chebyshev/CG 与现代动量法直接挂钩的桥梁。
+
+\subsection{Adam = 动态 Jacobi 预条件 + 极限环现象}
+
+\textbf{Adam 更新规则} \cite{kingma2015adam}：
+\[
+\begin{aligned}
+  m_k &= \beta_1 m_{k-1} + (1-\beta_1) g_k, \\
+  v_k &= \beta_2 v_{k-1} + (1-\beta_2) g_k \odot g_k, \\
+  \hat m_k &= m_k/(1-\beta_1^k),\quad \hat v_k = v_k/(1-\beta_2^k), \\
+  x_{k+1} &= x_k - \eta\,\hat m_k \oslash (\sqrt{\hat v_k} + \varepsilon).
+\end{aligned}
+\]
+代入统一模板：$P_k = \eta\,\mathrm{diag}(\sqrt{\hat v_k} + \varepsilon)^{-1}$，这是一个\textbf{动态对角预条件}。
+
+\begin{proposition}[Adam 与 Jacobi 预条件]
+\label{prop:adam-jacobi}
+设 $\beta_1 = 0$、$v_k$ 进入稳态时近似 $v_k \approx \mathbb{E}[g \odot g]$。对二次目标，当 $A$ 对角且 $\Sigma_x \propto I$ 时 $P_k \approx \eta\,\mathrm{diag}(A)^{-1}$，恰为 Jacobi 预条件器。证明见附录~\ref{app:proofs}。
+\end{proposition}
+
+\textbf{Bock--Wei{\ss} 2-极限环现象} \cite{bock2022adam}：Adam 即使在最简单的凸函数 $f(x) = \tfrac{1}{2} a x^2$ 上\textbf{也可以不收敛}，而是收敛到一个 2-极限环。
+
+\begin{example}[Adam 2-极限环的数值复现]
+实验 26 取 $a = 1$、$\eta = 0.05$、$\beta_1 = 0$、$\beta_2 = 0.99$、$\varepsilon = 10^{-12}$，在 $x_0 = 1$ 启动 2000 步，极限环检测算法识别出
+\[
+  x^+ \approx 0.0250,\quad x^- \approx -0.0251,\quad |x^+ - x^-| \approx 0.05.
+\]
+这不是数值噪声——尾段 200 步内 $\max(x) - \min(x) = 0.056$ 稳定。
+\end{example}

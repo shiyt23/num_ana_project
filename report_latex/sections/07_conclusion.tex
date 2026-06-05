@@ -1,0 +1,12 @@
+\section{结论}
+\label{sec:conclusion}
+
+\begin{enumerate}[nosep]
+  \item \textbf{统一模板} $x_{k+1} = x_k - P_k g_k$ 把 GD（Richardson）、Heavy-ball（谱加速）、Adam（动态 Jacobi）、Sophia（对角 Hessian）、Muon（极分解）放在同一数值迭代框架下。
+  \item \textbf{谱半径分析}精确预测二次问题上的收敛率：GD $\rho^* = (\kappa-1)/(\kappa+1)$、Polyak HB $\rho^* = (\sqrt\kappa-1)/(\sqrt\kappa+1)$；实验 2 直接验证。
+  \item \textbf{HB 是 Chebyshev 半迭代的定常极限}（定理~\ref{thm:hb-cheb} + 实验 25）：两者末段 gap 差距 $1.7 \times 10^{-13}$。
+  \item \textbf{Newton--Schulz 二次收敛}有干净的递推 \eqref{eq:ns-error}，收敛盆 $(0, \sqrt 3)$ 由实验 30 在 100 个初值上直接观察证实。
+  \item \textbf{Muon 的真本质}是谱范数 trust-region 线性子问题的最速下降方向（定理~\ref{thm:muon-tr}）；它在谱范数恢复目标上稳定下降，在 Frobenius 损失上不下降是几何错配。
+  \item \textbf{Adam 2-极限环}（实验 26）复现 Bock \& Wei{\ss} (2022)：即使最简凸 $f(x) = x^2/2$ 上 Adam 也可能不收敛。
+  \item \textbf{NAG $\leftrightarrow$ ODE}（实验 29）：AVD-ODE 的 RK4 解与离散 NAG 在 $t = \sqrt\eta k$ 下呈现相近轨迹。
+\end{enumerate}

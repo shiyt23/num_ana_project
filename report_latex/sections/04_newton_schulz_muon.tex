@@ -1,0 +1,117 @@
+\section{核心：Newton--Schulz 迭代与 Muon}
+\label{sec:ns-muon}
+
+\subsection{Newton--Schulz 迭代}
+
+设 $G \in \mathbb{R}^{m\times n}$（$m \ge n$，列满秩），考虑迭代
+\begin{equation}
+  X_0 = \frac{G}{\|G\|_2},\qquad X_{k+1} = \tfrac{1}{2} X_k (3 I - X_k^\top X_k).
+  \label{eq:ns}
+\end{equation}
+这就是 Schulz (1933) 提出的 Newton 型矩阵函数迭代 \cite{schulz1933,higham2008}。在标量情形下退化为 $x_{k+1} = x_k(3 - x_k^2)/2$。
+
+\begin{algorithm}[htbp]
+  \caption{Newton--Schulz 极分解迭代}
+  \label{alg:ns}
+  \begin{algorithmic}[1]
+    \Require 矩阵 $G\in\mathbb{R}^{m\times n}$（列满秩）
+    \Ensure 正交因子近似 $X_k \approx U$
+    \State $X_0 \gets G / \|G\|_2$
+    \For{$k = 0,1,2,\ldots$}
+      \State $X_{k+1} \gets \tfrac{1}{2}\, X_k \,(3I - X_k^\top X_k)$
+    \EndFor
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}[局部二次收敛]
+\label{thm:ns}
+若 $X_0$ 满足 $\sigma_{\min}(X_0) > 0$ 且 $\sigma_{\max}(X_0) < \sqrt 3$，则 \eqref{eq:ns} 二次收敛到 $G$ 的极分解正交因子 $U$。令 $E_k = X_k^\top X_k - I$，则
+\begin{equation}
+  E_{k+1} = -\tfrac{1}{4} E_k^2 \left(3 I - E_k\right),
+  \label{eq:ns-error}
+\end{equation}
+故 $\|E_{k+1}\|_F \le \tfrac{1}{4}\|E_k\|_F^2 (3 + \|E_k\|_F)$，即 $\|E_k\|_F$ 二次衰减。
+\end{theorem}
+
+\begin{proof}
+设 $G_k = X_k^\top X_k$。由 \eqref{eq:ns}，$G_{k+1} = \tfrac{1}{4} (3 I - G_k) G_k (3 I - G_k)$。代入 $G_k = I + E_k$，展开化简得 $E_{k+1} = -\tfrac{1}{4} E_k^2 (3 I - E_k)$。取 Frobenius 范数，当 $\|E_k\|_F < 1$ 时 $\|E_{k+1}\|_F < \|E_k\|_F^2$，即二次收敛。
+\end{proof}
+
+\textbf{收敛盆 $(0, \sqrt 3)$ 的标量证明}：设 $\sigma$ 是 $X_k$ 的某个奇异值，则迭代映射为 $\varphi(\sigma)=\sigma(3-\sigma^2)/2$。函数在 $\sigma \in (0,\sqrt3)$ 内保持在吸引盆中；当 $\sigma>\sqrt3$ 时通常进入发散轨道。
+
+\textbf{实验 30}：在 100 个初值 $\sigma_0 \in [0.05, 2.5]$ 上跑 NS，落在 $[0.05, \sqrt 3)$ 内的初值全部收敛；落在 $(\sqrt 3, 2.5]$ 的 11 个初值全部发散，与定理预言位级一致（图~\ref{fig:exp30}）。
+
+\begin{figure}[htbp]
+  \centering
+  \IfFileExists{../figures/exp30_ns_basin.png}{%
+    \includegraphics[width=0.85\linewidth]{exp30_ns_basin.png}%
+  }{%
+    \fbox{\parbox{0.8\linewidth}{\centering\vspace{2cm}图 exp30：运行实验后生成\\（\texttt{experiments/run\_all.py}）\vspace{2cm}}}%
+  }
+  \caption{Newton--Schulz 收敛盆：$\sigma_0$ 与 40 步后 $|\sigma^2-1|$}
+  \label{fig:exp30}
+\end{figure}
+
+\subsection{五次多项式 Higham 加速}
+
+实验 27 用 Higham (2008, eq.~8.20) 五次多项式
+\[
+  X_{k+1} = \tfrac{1}{8}\bigl(15 X_k - 10 X_k(X_k^\top X_k) + 3 X_k(X_k^\top X_k)^2\bigr),
+\]
+可验证 $\phi(1)=1$、$\phi'(1)=\phi''(1)=0$，5 步达机器精度，标准三阶 NS 要 11--15 步 \cite{higham2008,anonymous2025ns}。
+
+\subsection{Muon 优化器：谱范数 trust-region}
+
+Muon 的更新规则 \cite{jordan2024muon}：
+
+\begin{algorithm}[htbp]
+  \caption{Muon 优化器（矩阵参数）}
+  \label{alg:muon}
+  \begin{algorithmic}[1]
+    \Require 矩阵参数 $W$，损失 $f(W)$，步长 $\eta$，动量参数
+    \Ensure 更新后的 $W_{k+1}$
+    \State 计算带 Nesterov 动量的梯度矩阵 $M_k$
+    \State $\widetilde M_k \gets \textsc{NewtonSchulz}(M_k)$ \Comment{算法~\ref{alg:ns}}
+    \State $W_{k+1} \gets W_k - \eta\, \widetilde M_k$
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}[极分解的 trust-region 最优性]
+\label{thm:muon-tr}
+对任意 $G \in \mathbb{R}^{m\times n}$（$\mathrm{rank}(G) = r > 0$），
+\[
+  -t\,U V^\top \in \arg\min_{\substack{\Delta \in \mathbb{R}^{m\times n}\\ \|\Delta\|_2 \le t}} \langle G, \Delta\rangle_F,
+\]
+其中 $G = U \Sigma V^\top$ 是紧 SVD \cite{kovalev2025}。
+\end{theorem}
+
+\begin{proof}
+设 $\Delta = \widetilde U \widetilde\Sigma \widetilde V^\top$，$\|\Delta\|_2 = \widetilde\sigma_{\max} \le t$。由 von Neumann 迹不等式，
+\[
+  |\mathrm{tr}(\Delta^\top G)| \le \sum_{i=1}^{r} \sigma_i(\Delta) \sigma_i(G) \le t \sum_i \sigma_i(G) = t\,\|G\|_*.
+\]
+等号由 $\Delta = -t U V^\top$ 取到。
+\end{proof}
+
+\textbf{含义}：Muon 在谱范数 trust-region 上做线性逼近最速下降。这就是为什么 Muon 与 Frobenius GD 在 Frobenius 损失上不必一致。
+
+\subsection{Muon 在匹配谱范数几何的目标上下降}
+
+为展示 Muon 的优势，实验 12 和 28 设计了\textbf{谱范数恢复目标}
+\[
+  \min_{W \in \mathbb{R}^{m\times n}} f(W) = \tfrac{1}{2} \|W - W^*\|_\sigma^2,
+\]
+其中 $\|\cdot\|_\sigma$ 是谱范数。实验 12 数据（80 步）：Muon-NS 从 1.077 降到 \textbf{0.037}；实验 28 在 5 个种子上最终损失 0.028$\sim$0.037 高度一致（图~\ref{fig:exp28}）。
+
+\textbf{与 Frobenius 矩阵二次的对照}：在 $\min_W \tfrac{1}{2}\|AW - B\|_F^2$ 上 Frobenius GD 降到 $f - f^* = 51$，Muon 反而高达 63266——这正是定理~\ref{thm:muon-tr} 的几何含义。
+
+\begin{figure}[htbp]
+  \centering
+  \IfFileExists{../figures/exp12_matrix_muon.png}{%
+    \includegraphics[width=0.9\linewidth]{exp12_matrix_muon.png}%
+  }{%
+    \fbox{\parbox{0.8\linewidth}{\centering\vspace{2cm}图 exp12\vspace{2cm}}}%
+  }
+  \caption{Muon 在谱范数损失 vs Frobenius 矩阵二次上的表现}
+  \label{fig:exp12}
+\end{figure}

@@ -1,0 +1,42 @@
+\section{ODE 视角：连续极限与高分辨率}
+\label{sec:ode}
+
+\subsection{梯度流与 GD = 显式 Euler}
+
+梯度流 ODE $\dot x(t) = -\nabla f(x(t))$ 的前向 Euler 离散即 GD：$x_{k+1} = x_k - \eta \nabla f(x_k)$ \cite{hairer1993}。这就把 GD 放进了数值 ODE 的语言里。
+
+\subsection{AVD-ODE（Su--Boyd--Cand{\`e}s 2016）}
+
+把 Nesterov 加速写成
+\[
+  y_k = x_k + \frac{k-1}{k+2}(x_k - x_{k-1}), \quad x_{k+1} = y_k - \eta\nabla f(y_k),
+\]
+令 $X(t = k\sqrt\eta) \approx x_k$、$\eta \to 0$，Su 等证明 $X$ 满足 \cite{su2016}
+\begin{equation}
+  \ddot X(t) + \frac{3}{t} \dot X(t) + \nabla f(X(t)) = 0.
+  \label{eq:avd-ode}
+\end{equation}
+(5.1) 是带衰减阻尼 $3/t$ 的二阶 ODE，在 $f$ 凸时给出 $f(X(t)) - f^* = O(1/t^2)$。
+
+\subsection{高分辨率 ODE（Shi et al.~2021）}
+
+Shi 等提出\textbf{高分辨率 ODE} \cite{shi2021}
+\[
+  \ddot X + \gamma \dot X + (1 + \sqrt\eta\gamma)\nabla f(X) + \sqrt\eta\,\nabla^2 f(X)\dot X = 0,
+\]
+最后一项 $\sqrt\eta\,\nabla^2 f \dot X$ 是 $O(\sqrt\eta)$ 修正，\textbf{区分 NAG 和 Heavy-ball}：经典 \eqref{eq:avd-ode} 看不出二者差异，高分辨率 ODE 表明 NAG 多了曲率信息项。
+
+\subsection{数值对照（实验 29）}
+
+实验 29 在 2 维 $\kappa = 50$ 二次上：用 RK4 积分 \eqref{eq:avd-ode}；跑离散 NAG 和 Polyak HB。在连续时间 $t = \sqrt\eta k$ 下，离散 NAG 与 AVD-ODE 呈现相近的下降相图（图~\ref{fig:exp29}）。
+
+\begin{figure}[htbp]
+  \centering
+  \IfFileExists{../figures/exp29_nag_ode.png}{%
+    \includegraphics[width=0.9\linewidth]{exp29_nag_ode.png}%
+  }{%
+    \fbox{\parbox{0.8\linewidth}{\centering\vspace{2cm}图 exp29\vspace{2cm}}}%
+  }
+  \caption{NAG-ODE 解 vs 离散 NAG/HB 的相图对照}
+  \label{fig:exp29}
+\end{figure}

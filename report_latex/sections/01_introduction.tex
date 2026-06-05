@@ -1,0 +1,43 @@
+\section{引言}
+
+\subsection{这门课讲了什么}
+
+我们这学期的``数值分析与算法''课，迭代法的部分只系统讲了两件事：最速下降 (gradient descent / GD) 和共轭梯度 (CG)。然而工业界的深度学习训练里，最常见的优化器名字根本不在课本上——Adam、AdamW、Sophia，以及 2024 年 Jordan 等人提出、被 Moonshot 等公司用在 LLM 预训练里的 \textbf{Muon}。它们看起来像是``调参玄学''，但很少有人从\textbf{数值迭代}的角度看它们到底在做什么。
+
+我们想做的事情很简单：把这些``看起来像玄学''的优化器，全部重写成统一的数值迭代模板
+\begin{equation}
+  \boxed{\; x_{k+1} = x_k - P_k\, g_k, \quad g_k = \nabla f(x_k) \;}
+  \label{eq:unified}
+\end{equation}
+然后用我们课内学到的工具——谱半径、条件数、Chebyshev 多项式、矩阵函数迭代——去分析它们的收敛、稳定性和几何意义。在所有这些优化器里，\textbf{Muon} 是最有意思的一个：它的核心步骤 Newton--Schulz 迭代是 Higham 教材里的标准矩阵函数迭代，二次收敛，有解析的收敛盆 $(0,\sqrt 3)$。这给了我们一个用``纯数值分析''贯穿整篇论文的主线。
+
+\subsection{我们为什么选 Muon 做核心}
+
+我们曾经考察了多个候选方向，最终选择了以 Muon 作为核心，原因是：
+\begin{enumerate}[nosep]
+  \item \textbf{它是真的``现代''前沿}——Muon 2024 年 10 月才上 GitHub，2025 年才有理论文章 \cite{kovalev2025,liu2025muon}。
+  \item \textbf{它最数值分析}——Adam 是机器学习圈的工程产物，理论分析里大多是 regret bound；Muon 不一样，它的核心子程序就是 Higham 教材第 8 章里讲的极分解 Newton--Schulz 迭代 \cite{higham2008,schulz1933}，这是 1933 年 G. Schulz 提出的纯数值算法。
+  \item \textbf{它在我们能写的篇幅里有完整的理论闭环}：从极分解的存在唯一性，到 Newton--Schulz 二次收敛和 $\sqrt 3$ 收敛盆，到 Kovalev 的谱范数 trust-region 线性化解释，每一步都能严格证明，不需要随机假设。
+\end{enumerate}
+
+下面这张表是我们的``路线图''。横向是机制（$P_k$ 的形态），纵向是它在课内 / 前沿的对应：
+
+\begin{table}[htbp]
+  \centering
+  \caption{统一模板 $x_{k+1}=x_k-P_k g_k$ 下的优化器对照}
+  \label{tab:roadmap}
+  \small
+  \begin{tabularx}{\textwidth}{@{}lXXX@{}}
+    \toprule
+    $P_k$ 形态 & 经典对应 & 现代名字 & 我们要证 / 验证的 \\
+    \midrule
+    $\eta I$（标量步长） & Richardson / 显式 Euler & GD & 强凸线性收敛（定理~\ref{thm:gd}） \\
+    $\eta I$ + 二阶状态 & Chebyshev 半迭代 & Heavy-ball, Nesterov & HB $\equiv$ Chebyshev（定理~\ref{thm:hb-cheb}）+ AVD-ODE 离散 \\
+    $\eta\,\mathrm{diag}(\hat v_k)^{-1/2}$ & 动态 Jacobi 预条件 & Adam, AdamW & 动态预条件 + Bock--Wei{\ss} 2-极限环 \\
+    $\eta\,\mathrm{diag}(h_k)^{-1}$ & 对角拟 Newton & Sophia & $\kappa_{\mathrm{eff}}$ 比 Adam 小 \\
+    矩阵正交化 $G\to U V^\top$ & \textbf{Newton--Schulz 矩阵迭代} & \textbf{Muon} & 二次收敛 + 谱范数 trust-region 最优（定理~\ref{thm:ns},~\ref{thm:muon-tr}） \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+本文的安排是：第~\ref{sec:prelim} 节给数值迭代的预备知识；第~\ref{sec:baselines} 节是 GD/HB/Adam 三大基线机制；第~\ref{sec:ns-muon} 节是核心——Newton--Schulz 和 Muon；第~\ref{sec:ode} 节是 ODE 视角；第~\ref{sec:experiments} 节是数值实验；第~\ref{sec:conclusion} 节结论。完整证明放在附录~\ref{app:proofs}；实验数值表在附录~\ref{app:data}。

@@ -1,0 +1,62 @@
+\section{实验数值摘要（精选）}
+\label{app:data}
+
+数据来源：\texttt{data/experiment\_results.json}。完整版见 \texttt{report/appendix\_auto.md}。
+
+\subsection{实验 1：达到 $10^{-6}$ 的迭代步数}
+\label{app:exp1}
+
+\noindent 下表给出不同条件数下各方法达到 $10^{-6}$ 精度所需的迭代步数。
+\begin{center}
+  \vspace{0.5em}
+  \begin{tabular}{@{}cccc@{}}
+    \toprule
+    $\kappa$ & GD & Polyak HB & Adam \\
+    \midrule
+    10   & 39  & 17  & 162 \\
+    100  & 439 & 68  & 288 \\
+    1000 & --- ($>$2000) & 256 & 1133 \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.5em}
+\end{center}
+
+\subsection{实验 12：Muon 在两种损失上}
+\label{app:exp12}
+
+\noindent Muon 在谱范数损失与 Frobenius 矩阵二次上的最终损失对比如下。
+\begin{center}
+  \vspace{0.5em}
+  \begin{tabular}{@{}lccc@{}}
+    \toprule
+    目标 & Muon-NS 最终 & GD 最终 & Adam 最终 \\
+    \midrule
+    谱范数损失 (80 步)      & 0.037   & $2.4\times 10^{-32}$ & $1.1\times 10^{-4}$ \\
+    Frobenius 二次 (400 步) & 63266   & 51.4                 & --- \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.5em}
+\end{center}
+
+\subsection{实验 25：HB $\equiv$ Chebyshev 半迭代}
+\label{app:exp25}
+
+\noindent Heavy-ball 与 Chebyshev 半迭代末段数值对比如下。
+\begin{center}
+  \vspace{0.5em}
+  \begin{tabular}{@{}lc@{}}
+    \toprule
+    量 & 值 \\
+    \midrule
+    200 步后 $f - f^*$（HB）   & $10^{-30}$ \\
+    200 步后 $f - f^*$（Cheb） & $10^{-30}$ \\
+    max gap diff（末 50 步）   & $1.7 \times 10^{-13}$ \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.5em}
+\end{center}
+
+\subsection{实验 30：Newton--Schulz 收敛盆}
+\label{app:exp30}
+
+\noindent 理论收敛盆上界 $\sqrt{3} \approx 1.7321$。在 100 个 $\sigma_0 \in [0.05, 2.5]$ 中，\textbf{11 个发散}，且全部满足 $\sigma_0 > \sqrt{3}$，与定理~\ref{thm:ns} 的预言完全一致。

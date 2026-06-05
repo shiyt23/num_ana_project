@@ -1,0 +1,56 @@
+\section{预备：迭代法的收敛理论}
+\label{sec:prelim}
+
+\subsection{谱半径、Lipschitz 与强凸}
+
+设 $f:\mathbb{R}^d\to\mathbb{R}$ 二阶可微。若存在常数 $0<\mu\le L$ 使得
+\[
+  \mu I \preceq \nabla^2 f(x) \preceq L I \quad \forall x,
+\]
+则称 $f$ \textbf{$\mu$-强凸} 且 \textbf{梯度 $L$-Lipschitz 连续}。条件数定义为 $\kappa=L/\mu$。
+
+本文的核心模型问题是强凸二次
+\[
+  f(x) = \tfrac{1}{2} x^\top A x - b^\top x, \quad A=A^\top \succ 0,
+\]
+此时 $\mu = \lambda_{\min}(A)$、$L = \lambda_{\max}(A)$、唯一极小点 $x^*=A^{-1}b$，且 $\nabla f(x)=Ax-b$。优化等价于解线性方程组 $Ax=b$，因此整篇论文的``优化''和``求解''是同一回事——这是把现代优化器与课内迭代法直接挂钩的根本理由。
+
+\subsection{Krylov 子空间与 Chebyshev 多项式（CG 的本质）}
+
+课内讲 CG 时用的是``共轭性 + 子空间最优''的几何论证。本节用 Chebyshev 多项式的视角重述，因为 Heavy-ball 优化器的最优性证明用得到同一套工具 \cite{trefethen1997,saad2003}。
+
+设 $x_0$ 是 CG 的初值，$r_0 = b - A x_0$。CG 的第 $k$ 步迭代 $x_k$ 在仿射 Krylov 子空间
+\[
+  x_0 + K_k(A, r_0), \quad K_k(A, r_0) = \mathrm{span}\{r_0, A r_0, \ldots, A^{k-1} r_0\}
+\]
+中\textbf{最小化} $A$-范数误差 $\|x - x^*\|_A := \sqrt{(x-x^*)^\top A (x-x^*)}$。等价地，误差 $e_k = x_k - x^*$ 写成
+\[
+  e_k = p_k(A) e_0, \quad p_k \in \mathcal{P}_k^0 := \{\,p \in \mathcal{P}_k : p(0) = 1\,\}.
+\]
+CG 选的就是使 $\|p_k(A) e_0\|_A$ 最小的 $p_k$，因此
+\[
+  \|e_k\|_A \le \min_{p \in \mathcal{P}_k^0} \max_{\lambda \in [\mu, L]} |p(\lambda)| \cdot \|e_0\|_A.
+\]
+右边是经典 Chebyshev 最佳逼近问题。其解为缩放的 Chebyshev 多项式：
+\[
+  p_k^\star(\lambda) = \frac{T_k\!\left(\frac{L+\mu-2\lambda}{L-\mu}\right)}{T_k\!\left(\frac{L+\mu}{L-\mu}\right)},
+\]
+其中 $T_k(t)$ 是第一类 Chebyshev 多项式。带入得到课内的经典上界：
+\begin{equation}
+  \|e_k\|_A \le 2 \left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}\right)^k \|e_0\|_A.
+  \label{eq:cg-bound}
+\end{equation}
+这一步是后面所有``加速类''方法（Heavy-ball、Nesterov、Chebyshev 半迭代）的共同上界。
+
+\subsection{极分解：矩阵函数视角}
+
+\begin{theorem}[Higham 2008, Theorem 8.1]
+\label{thm:polar}
+对任意 $G\in\mathbb{R}^{m\times n}$（设 $m\ge n$，$G$ 列满秩），存在\textbf{唯一}分解
+\[
+  G = U H, \quad U \in \mathbb{R}^{m\times n},\ U^\top U = I_n,\ H \in \mathbb{R}^{n\times n},\ H = H^\top \succeq 0.
+\]
+$U$ 称为 $G$ 的\textbf{正交因子}，$H$ 称为 Hermitian 因子。若 $G=\widehat U\Sigma V^\top$ 是 SVD，则 $U = \widehat U V^\top$，$H = V \Sigma V^\top$。
+\end{theorem}
+
+我们在第~\ref{sec:ns-muon} 节会证明 Muon 的更新方向就是 $-U$，并解释这就是谱范数 trust-region 线性子问题的最速下降方向 \cite{kovalev2025}.

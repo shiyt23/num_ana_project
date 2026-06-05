@@ -1,0 +1,36 @@
+\section{完整证明}
+\label{app:proofs}
+
+\subsection{定理~\ref{thm:gd} 的证明（GD 线性收敛）}
+
+设 $A = Q\Lambda Q^\top$，$0 < \mu \le \lambda_i \le L$。GD 更新 $x_{k+1} = x_k - \eta(A x_k - b)$，误差 $e_k = x_k - x^*$ 满足 $e_{k+1} = (I - \eta A) e_k$。在特征基下各模态衰减为 $|1 - \eta\lambda_i|$，故
+\[
+  \|e_{k+1}\|_2 \le \max_i |1 - \eta\lambda_i| \cdot \|e_k\|_2 = \rho(\eta)\,\|e_k\|_2.
+\]
+$\rho(\eta) = \max\{|1 - \eta\mu|, |1 - \eta L|\}$ 在 $\eta = 2/(\mu+L)$ 处取最小值 $\rho^* = (\kappa-1)/(\kappa+1)$。$\square$
+
+\subsection{定理~\ref{thm:hb} 的证明（Polyak 最优 Heavy-ball）}
+
+在特征基下，Heavy-ball 对每个模态 $\lambda$ 给出 $2\times 2$ 矩阵 $T(\lambda)$，特征方程 $z^2 - (1 - \eta\lambda + \beta) z + \beta = 0$。最优情形要求所有 $\lambda\in[\mu,L]$ 满足 $(1 - \eta\lambda + \beta)^2 \le 4\beta$，端点同时取等：
+\[
+  1 - \eta\mu + \beta = 2\sqrt\beta,\quad -(1 - \eta L + \beta) = 2\sqrt\beta.
+\]
+解得 $\beta^* = \bigl(\frac{\sqrt L - \sqrt\mu}{\sqrt L + \sqrt\mu}\bigr)^2$，$\rho^* = (\sqrt\kappa - 1)/(\sqrt\kappa + 1)$，$\eta^* = 4/(\sqrt L + \sqrt\mu)^2$。$\square$
+
+\subsection{定理~\ref{thm:hb-cheb} 的证明（HB 是 Chebyshev 半迭代的定常极限）}
+
+Chebyshev 半迭代（Hageman--Young 形式）：
+\[
+  \omega_1 = \frac{1}{1 - \sigma^2/2},\quad
+  \omega_{k+1} = \frac{1}{1 - \sigma^2 \omega_k / 4},\quad
+  x_{k+1} = \omega_{k+1}\left(\frac{r_k}{d} + x_k - x_{k-1}\right) + x_{k-1},
+\]
+其中 $d = (L+\mu)/2$，$\sigma = (L-\mu)/(L+\mu)$。令 $\omega_k \to \omega_\infty$，不动点方程给出 $\omega_\infty = 2/(1 + \sqrt{1-\sigma^2})$。可验证 $\eta_\infty = \omega_\infty/d = \eta^*$、$\beta_\infty = \omega_\infty - 1 = \beta^*$，故 Chebyshev 在系数收敛后退化为 Polyak 最优 Heavy-ball。实验 25 末段 gap $1.7\times 10^{-13}$ 与该解释一致。$\square$
+
+\subsection{命题~\ref{prop:adam-jacobi} 的证明}
+
+$\beta_1 = 0$ 时 $\hat m_k = g_k$；$v_k$ 趋于 $\mathbb{E}[g \odot g]$。对二次问题 $g(x) = A(x - x^*)$，当 $A$ 对角且 $\Sigma \propto I$ 时 $\mathbb{E}[g \odot g]\propto \mathrm{diag}(A)^2$，故 $P_k \approx \eta\,\mathrm{diag}(A)^{-1}$，恰为 Jacobi 预条件器。$\square$
+
+\subsection{定理~\ref{thm:ns}、定理~\ref{thm:muon-tr} 的证明}
+
+定理~\ref{thm:ns} 的完整证明见正文 \S\ref{sec:ns-muon}；定理~\ref{thm:muon-tr} 的证明见正文，基于 von Neumann 迹不等式取等条件。

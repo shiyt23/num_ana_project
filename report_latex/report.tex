@@ -1,0 +1,54 @@
+\documentclass[10.5pt,a4paper]{ctexart}
+
+\input{preamble}
+
+\title{%
+  正交化梯度方法的数值分析视角：\\
+  从 Newton--Schulz 极分解到 Muon 优化器及其统一框架
+}
+\author{%
+  赵泽霖（2023010848）\quad 史云天（2023010836）\\
+  \small 课程：数值分析与算法
+}
+\date{\today}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+\begin{abstract}
+近年来 Muon 优化器把矩阵正交化（极分解的多项式近似）引入深度学习训练，被认为是 Adam 之后第一个``非对角''型现代优化器；同期理论上 Kovalev (2025) 将它解释为谱范数 trust-region 线性子问题的最速下降。我们把 Muon 重新放回\textbf{矩阵迭代/矩阵函数}这一经典数值分析背景：核心数值步骤 Newton--Schulz 迭代 $X_{k+1} = \tfrac{1}{2}X_k(3I - X_k^\top X_k)$ 是 Higham 教材里的极分解迭代，具有局部二次收敛性和明确的收敛盆 $\sigma_0\in(0,\sqrt 3)$。围绕这个核心，我们做四件事：
+\begin{enumerate}[nosep]
+  \item \textbf{完整的数值分析视角推导}：给出 GD 在强凸二次上的线性收敛、Heavy-ball 谱半径最优性、Heavy-ball 作为 Chebyshev 半迭代定常极限的关系、Newton--Schulz 二次收敛（含 $E_{k+1}=-\tfrac{1}{4}E_k^2(3I-E_k)$ 完整推导）、以及极分解作为谱范数 trust-region 线性子问题最速下降方向的最优性证明。
+  \item \textbf{三条前沿链条}：把 Muon 的 trust-region 解释、Adam/AdamW 收敛与 Bock--Wei{\ss} 极限环、Su--Boyd--Cand{\`e}s AVD-ODE 和高分辨率 ODE 全部纳入同一个 $x_{k+1}=x_k-P_k g_k$ 模板下讨论。
+  \item \textbf{20 组数值实验}：覆盖病态二次 ($\kappa\in\{10,100,10000\}$)、谱范数 trust-region 损失、Heavy-ball/Chebyshev 定常极限关系、Adam 2-极限环、NAG-ODE 与离散迭代的相图对照、Newton--Schulz 收敛盆边界 $\sqrt 3$ 的直接观测。
+  \item \textbf{代码与可复现}：14 项 pytest + 一键复现脚本 + 33 张图自动生成；图表与正文 claim 数值上严格对齐。
+\end{enumerate}
+
+关键发现：Muon 在\textbf{谱范数恢复目标}上 80 步内将谱范数损失从 1.077 降到 0.037（约 30$\times$ 下降），而在 Frobenius 矩阵二次上确实不下降——后者并非实现 bug，而是反映了 trust-region 几何与 Frobenius 几何的本质错配。Polyak 最优 Heavy-ball 可看作 Chebyshev 半迭代的定常极限；在实验 25 的末段，两者的目标函数 gap 差距降到 $1.7\times 10^{-13}$。Newton--Schulz 在 100 个初值 $\sigma_0\in[0.05, 2.5]$ 中恰好有 11 个发散，全部落在 $\sigma_0>\sqrt 3$ 区域，与定理预言一致。
+
+\medskip
+\noindent\textbf{关键词：}Newton--Schulz 迭代；极分解；Muon 优化器；谱范数 trust-region；Chebyshev 半迭代；Heavy-ball；Nesterov 加速；动态预条件；ODE 离散化。
+\end{abstract}
+
+\newpage
+\setcounter{page}{1}
+
+\input{sections/01_introduction}
+\input{sections/02_preliminaries}
+\input{sections/03_baselines}
+\input{sections/04_newton_schulz_muon}
+\input{sections/05_ode}
+\input{sections/06_experiments}
+\input{sections/07_conclusion}
+\input{sections/08_contribution}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\appendix
+\input{appendices/appendix_a}
+\input{appendices/appendix_b}
+\input{appendices/appendix_c}
+
+\end{document}

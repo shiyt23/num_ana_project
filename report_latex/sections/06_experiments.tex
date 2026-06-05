@@ -1,0 +1,94 @@
+\section{数值实验}
+\label{sec:experiments}
+
+\subsection{环境与一键复现}
+
+项目入口为实验脚本 \texttt{run\_all.py} 与 \texttt{extended\_experiments.py}，全局超参在 \texttt{config.py}（MAX\_ITER=2000、SEED=42）。33 张图存于 \texttt{figures/} 目录，数值摘要存于 \texttt{data/}，14 项 pytest 覆盖优化器、谱半径、NS、CG、Chebyshev、ODE 与 Muon。
+
+\subsection{实验列表（精选）}
+
+\begin{table}[H]
+  \centering
+  \caption{主要数值实验与关键结果}
+  \label{tab:experiments}
+  \small
+  \begin{tabular}{@{}cll@{}}
+    \toprule
+    编号 & 主题 & 关键数值 \\
+    \midrule
+    1 & $\kappa\in\{10,100,1000\}$ GD/HB/Adam & $\kappa{=}100$: HB 68 步、Adam 288 步、GD 439 步 \\
+    2 & Polyak HB 谱半径理论 & $\rho^*_{\mathrm{HB}}{=}0.818$, $\rho_{\mathrm{GD}}{=}0.980$ \\
+    4 & Adam $\kappa_{\mathrm{eff}}$ 演化 & fast-adapt 配置 $\kappa_{\mathrm{eff}}$ 降到 16.7 \\
+    8 & Jacobi vs Adam & 对角 $A$: Jacobi 1 步；稠密 $A$: $\kappa_{\mathrm{eff}}{=}312$ \\
+    11 & Nesterov vs Polyak & $\kappa{=}1000$: Nest 237、HB 256 步 \\
+    12 & Muon 谱范数 vs Frobenius & 谱范数 Muon 0.037、Frob Muon 63266 \\
+    \textbf{25} & HB $\equiv$ Chebyshev 定常极限 & 末段 max gap $= 1.7\times 10^{-13}$ \\
+    \textbf{26} & Adam 2-极限环 & $x^\pm{=}(0.025,-0.025)$ \\
+    \textbf{27} & 五次多项式 NS vs 标准 NS & 5 步达 $10^{-16}$ \\
+    \textbf{28} & Muon 谱范数 trust-region & Muon 0.028$\sim$0.037 一致 \\
+    \textbf{29} & NAG-ODE vs 离散 NAG/HB & NAG 与 AVD-ODE 相近 \\
+    \textbf{30} & NS 收敛盆 $\sqrt 3$ & 11 个 $\sigma_0{>}\sqrt 3$ 全发散 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{重要图的解读}
+
+\noindent\textbf{图 1（exp1）}\quad
+$\kappa \in \{10, 100, 1000\}$ 的三栏对照。Momentum 在所有 $\kappa$ 上显著快于 GD；$\kappa = 1000$ 时 Adam 1133 步收敛，GD 在 MAX\_ITER=2000 内未达 $10^{-6}$。
+
+\begin{figure}[H]
+  \centering
+  \IfFileExists{../figures/exp1_convergence.png}{%
+    \includegraphics[width=0.95\linewidth]{exp1_convergence.png}%
+  }{%
+    \fbox{\parbox{0.8\linewidth}{\centering\vspace{2cm}图 exp1\vspace{2cm}}}%
+  }
+  \caption{$\kappa \in \{10, 100, 1000\}$ 下 GD / Heavy-ball / Adam 收敛曲线（实验 1）}
+  \label{fig:exp1}
+\end{figure}
+
+\medskip
+\noindent\textbf{图 25（exp25，主结果）}\quad
+在 $\kappa = 100$、200 步的设置下，Heavy-ball 与 Chebyshev 半迭代的定常极限关系得到验证：左图两者末段 $f - f^*$ 曲线几乎完全重合，末 50 步最大差距为 $1.7 \times 10^{-13}$。
+
+\begin{figure}[H]
+  \centering
+  \IfFileExists{../figures/exp25_hb_chebyshev.png}{%
+    \includegraphics[width=0.95\linewidth]{exp25_hb_chebyshev.png}%
+  }{%
+    \fbox{\parbox{0.8\linewidth}{\centering\vspace{2cm}图 exp25\vspace{2cm}}}%
+  }
+  \caption{Heavy-ball 与 Chebyshev 半迭代的定常极限关系（实验 25）}
+  \label{fig:exp25}
+\end{figure}
+
+\medskip
+\noindent\textbf{图 26（exp26，Adam 2-极限环）}\quad
+四组超参对照中，第 2 组形成清晰的 2-极限环 $\{0.025,\,-0.025\}$，是 Bock \& Wei{\ss} (2022) 理论的直接数值复现。
+
+\begin{figure}[H]
+  \centering
+  \IfFileExists{../figures/exp26_adam_limit_cycle.png}{%
+    \includegraphics[width=0.9\linewidth]{exp26_adam_limit_cycle.png}%
+  }{%
+    \fbox{\parbox{0.8\linewidth}{\centering\vspace{2cm}图 exp26\vspace{2cm}}}%
+  }
+  \caption{Adam 2-极限环的数值复现（实验 26）}
+  \label{fig:exp26}
+\end{figure}
+
+\medskip
+\noindent\textbf{图 28（exp28，Muon 的主场）}\quad
+在谱范数 trust-region 损失上，5 个种子的 Muon 均收敛到 $0.028\sim 0.037$ 的稳定带，表明其正交化方向与谱范数几何相匹配。
+
+\begin{figure}[H]
+  \centering
+  \IfFileExists{../figures/exp28_muon_trust_region.png}{%
+    \includegraphics[width=0.9\linewidth]{exp28_muon_trust_region.png}%
+  }{%
+    \fbox{\parbox{0.8\linewidth}{\centering\vspace{2cm}图 exp28\vspace{2cm}}}%
+  }
+  \caption{Muon 在谱范数 trust-region 损失上的表现（实验 28）}
+  \label{fig:exp28}
+\end{figure}

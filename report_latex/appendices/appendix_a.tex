@@ -1,0 +1,42 @@
+\section{代码与 $P_k$ 对照表}
+\label{app:code}
+
+\begin{table}[htbp]
+  \centering
+  \caption{主要源代码文件}
+  \small
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    文件 & 内容 \\
+    \midrule
+    \texttt{src/quadratic.py} & 病态二次构造、目标、梯度 \\
+    \texttt{src/optimizers.py} & gd / momentum / nesterov / adam / adamw / sophia / jacobi \\
+    \texttt{src/newton\_schulz.py} & 标准 NS + 五次多项式 Higham \\
+    \texttt{src/chebyshev.py} & Chebyshev 半迭代 + HB-Polyak 形式 \\
+    \texttt{src/spectral\_trust\_region.py} & 谱范数恢复 + Muon/GD/Adam 对照 \\
+    \texttt{src/adam\_limit\_cycle.py} & 标量 Adam + 2-极限环检测 \\
+    \texttt{src/ode\_integrators.py} & 梯度流 / AVD-ODE 的 RK4 \\
+    \texttt{experiments/run\_all.py} & 实验 1--10 + 入口 \\
+    \texttt{experiments/extended\_experiments.py} & 实验 11--30 \\
+    \texttt{tests/test\_*.py} & 14 项回归测试 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \caption{$P_k$ 形态与优化器对照}
+  \small
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    $P_k$ 形态 & 优化器 & 代码标签 \\
+    \midrule
+    $\eta I$ & GD & \texttt{gd} \\
+    二阶状态 + $\eta I$ & Polyak HB & \texttt{momentum} \\
+    二阶状态 + lookahead & Nesterov & \texttt{nesterov} \\
+    $\eta\,\mathrm{diag}(\sqrt{\hat v_k})^{-1}$ & Adam & \texttt{adam} \\
+    Newton--Schulz 正交化 & Muon & \texttt{muon\_direction} \\
+    Chebyshev 时变 $\omega_k$ & Chebyshev 半迭代 & \texttt{chebyshev\_semi\_iterative} \\
+    \bottomrule
+  \end{tabular}
+\end{table}

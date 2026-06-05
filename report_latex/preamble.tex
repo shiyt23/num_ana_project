@@ -1,0 +1,67 @@
+% 课程要求：单栏、五号字（10.5pt），行距与 Word 模板接近
+\usepackage[left=2.54cm,right=2.54cm,top=2.54cm,bottom=2.54cm]{geometry}
+\usepackage{setspace}
+\setstretch{1.25}
+
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
+\usepackage{mathtools}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{hyperref}
+\usepackage{xcolor}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=blue!60!black,
+  urlcolor=blue!60!black
+}
+
+\graphicspath{{../figures/}}
+
+% 定理环境（中文）
+\theoremstyle{plain}
+\newtheorem{theorem}{定理}[section]
+\newtheorem{lemma}[theorem]{引理}
+\newtheorem{proposition}[theorem]{命题}
+\theoremstyle{definition}
+\newtheorem{example}[theorem]{示例}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{注}
+
+% 算法标题
+\floatname{algorithm}{算法}
+\renewcommand{\algorithmicrequire}{\textbf{输入:}}
+\renewcommand{\algorithmicensure}{\textbf{输出:}}
+
+% 图表标题
+\captionsetup{font=small,labelfont=bf}
+
+% 节标题格式
+\ctexset{
+  section = {format=\large\bfseries},
+  subsection = {format=\normalsize\bfseries},
+  subsubsection = {format=\normalsize\bfseries}
+}
+
+% 公式编号按节
+\numberwithin{equation}{section}
+
+% 页眉页脚
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[C]{\small 数值分析与算法 · 期末报告}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
