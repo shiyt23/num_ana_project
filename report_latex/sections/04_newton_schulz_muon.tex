@@ -101,17 +101,46 @@ Muon 的更新规则 \cite{jordan2024muon}：
 \[
   \min_{W \in \mathbb{R}^{m\times n}} f(W) = \tfrac{1}{2} \|W - W^*\|_\sigma^2,
 \]
-其中 $\|\cdot\|_\sigma$ 是谱范数。实验 12 数据（80 步）：Muon-NS 从 1.077 降到 \textbf{0.037}；实验 28 在 5 个种子上最终损失 0.028$\sim$0.037 高度一致（图~\ref{fig:exp28}）。
+其中 $\|\cdot\|_\sigma$ 是谱范数。实验 12 左图（80 步、$W_0=0$）：Muon-NS 从 1.077 降到 \textbf{0.037}；GD 终值 $2.4\times 10^{-32}$、Adam 终值 $1.1\times 10^{-4}$。注意 $W_0=0$ 时 $\nabla f(0)=-W^*$，GD 沿 $W^*$ 直线下降，故左图中 GD 曲线往往最低——这是初值巧合，详见 \S\ref{sec:experiments} 对图~\ref{fig:exp28} 的读图说明。实验 28 在 5 个种子上 Muon 最终损失 0.028$\sim$0.037 高度一致。
 
-\textbf{与 Frobenius 矩阵二次的对照}：在 $\min_W \tfrac{1}{2}\|AW - B\|_F^2$ 上 Frobenius GD 降到 $f - f^* = 51$，Muon 反而高达 63266——这正是定理~\ref{thm:muon-tr} 的几何含义。
+\textbf{与 Frobenius 矩阵二次的对照}（exp12 右图）：在 $\min_W \tfrac{1}{2}\|AW - B\|_F^2$ 上 Frobenius GD 降到 $f - f^* = 51$，Muon 反而高达 63266——这才是 Muon 与 GD 几何错配的典型表现，也是定理~\ref{thm:muon-tr} 的直接含义。
 
-\begin{figure}[htbp]
+\begin{figure}[H]
   \centering
   \IfFileExists{../figures/exp12_matrix_muon.png}{%
     \includegraphics[width=0.9\linewidth]{exp12_matrix_muon.png}%
   }{%
     \fbox{\parbox{0.8\linewidth}{\centering\vspace{2cm}图 exp12\vspace{2cm}}}%
   }
-  \caption{Muon 在谱范数损失 vs Frobenius 矩阵二次上的表现}
+  \caption{Muon 在谱范数损失 vs Frobenius 矩阵二次上的表现（左：$W_0=0$ 时 GD 因 $\nabla f(0)=-W^*$ 往往最低）}
   \label{fig:exp12}
 \end{figure}
+
+\subsection{如何理解 Muon 与 GD 的对比}
+\label{sec:muon-vs-gd}
+
+读者容易得出``Muon 各种角度不如 GD''的印象，这源于\textbf{用错了比较标尺}：Muon 不是 Frobenius 意义下的 GD 替代品，而是换了一套预条件几何 $P_k$（矩阵正交化 + 谱范数 trust-region）。二者在统一模板 $x_{k+1}=x_k-P_k g_k$ 下\textbf{可比的是机制与理论}，不宜在同一损失、同一初值下简单比``谁更小、谁更快''。
+
+\begin{table}[H]
+  \centering
+  \caption{Muon 与 GD 在不同实验中的角色对照}
+  \label{tab:muon-gd-roles}
+  \small
+  \begin{tabularx}{\textwidth}{@{}lXX@{}}
+    \toprule
+    实验场景 & GD 的表现 & Muon 应如何解读 \\
+    \midrule
+    向量强凸二次（exp1） & 基准方法，收敛慢但可靠 & 不适用；Muon 面向矩阵参数 \\
+    Frobenius 矩阵二次（exp12 右） & 正常下降至 $f-f^*=51$ & \textbf{发散}至 $63266$：说明 Muon 不能替代 Frobenius GD \\
+    谱范数恢复（exp12 左 / exp28） & $W_0{=}0$ 时常因 $\nabla f(0){=}{-}W^*$ 直达 $10^{-32}$ & 稳定降至 $0.03$ 平台：验证 trust-region \textbf{方向几何}匹配，非全局精度 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\noindent\textbf{Muon 的价值不在``全面打败 GD''，而在：}
+\begin{enumerate}[nosep]
+  \item \textbf{理论闭环}：核心子程序 Newton--Schulz 是课内矩阵函数迭代；定理~\ref{thm:muon-tr} 给出每步在谱范数 trust-region 下的最优方向（von Neumann 迹不等式取等）。
+  \item \textbf{几何分工}：GD 优化 Frobenius 线性子问题；Muon 优化谱范数 trust-region 线性子问题——目标不同，胜负不可直接横比。
+  \item \textbf{工程动机} \cite{jordan2024muon,kovalev2025}：LLM 训练中矩阵型隐层权重需要在谱范数意义下控制更新幅度；Muon 用 NS 高效近似极分解正交因子，提供与 Adam 不同的\textbf{非对角}预条件 $P_k$。
+  \item \textbf{本报告实验目的}：验证上述几何解释（NS 收敛盆、trust-region 方向、Frobenius 错配），而非在简化二次模型上宣称 Muon 优于 GD。
+\end{enumerate}

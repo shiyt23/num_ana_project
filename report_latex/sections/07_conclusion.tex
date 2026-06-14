@@ -6,7 +6,7 @@
   \item \textbf{谱半径分析}精确预测二次问题上的收敛率：GD $\rho^* = (\kappa-1)/(\kappa+1)$、Polyak HB $\rho^* = (\sqrt\kappa-1)/(\sqrt\kappa+1)$；实验 2 直接验证。
   \item \textbf{HB 是 Chebyshev 半迭代的定常极限}（定理~\ref{thm:hb-cheb} + 实验 25）：两者末段 gap 差距 $1.7 \times 10^{-13}$。
   \item \textbf{Newton--Schulz 二次收敛}有干净的递推 \eqref{eq:ns-error}，收敛盆 $(0, \sqrt 3)$ 由实验 30 在 100 个初值上直接观察证实。
-  \item \textbf{Muon 的真本质}是谱范数 trust-region 线性子问题的最速下降方向（定理~\ref{thm:muon-tr}）；它在谱范数恢复目标上稳定下降，在 Frobenius 损失上不下降是几何错配。
+  \item \textbf{Muon 的真本质}是谱范数 trust-region 线性子问题的最速下降方向（定理~\ref{thm:muon-tr}）：它与 GD 优化\textbf{不同的每步子问题}，不宜在同一 Frobenius/谱范数损失上简单比优劣（详见 \S\ref{sec:muon-vs-gd}）。实验表明：Frobenius 二次上 Muon 与 GD 几何错配（exp12 右）；谱范数恢复上 Muon 跨种子稳定下降（exp28），而 GD 在 $W_0=0$ 时因初值巧合更快。
   \item \textbf{Adam 2-极限环}（实验 26）复现 Bock \& Wei{\ss} (2022)：即使最简凸 $f(x) = x^2/2$ 上 Adam 也可能不收敛。
   \item \textbf{NAG $\leftrightarrow$ ODE}（实验 29）：AVD-ODE 的 RK4 解与离散 NAG 在 $t = \sqrt\eta k$ 下呈现相近轨迹。
 \end{enumerate}

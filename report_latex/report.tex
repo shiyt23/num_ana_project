@@ -25,7 +25,7 @@
   \item \textbf{代码与可复现}：14 项 pytest + 一键复现脚本 + 33 张图自动生成；图表与正文 claim 数值上严格对齐。
 \end{enumerate}
 
-关键发现：Muon 在\textbf{谱范数恢复目标}上 80 步内将谱范数损失从 1.077 降到 0.037（约 30$\times$ 下降），而在 Frobenius 矩阵二次上确实不下降——后者并非实现 bug，而是反映了 trust-region 几何与 Frobenius 几何的本质错配。Polyak 最优 Heavy-ball 可看作 Chebyshev 半迭代的定常极限；在实验 25 的末段，两者的目标函数 gap 差距降到 $1.7\times 10^{-13}$。Newton--Schulz 在 100 个初值 $\sigma_0\in[0.05, 2.5]$ 中恰好有 11 个发散，全部落在 $\sigma_0>\sqrt 3$ 区域，与定理预言一致。
+关键发现：Muon 与 GD 优化\textbf{不同的每步几何}（谱范数 trust-region vs Frobenius 梯度），不宜在同一损失上简单比优劣；在 Frobenius 矩阵二次上 Muon 发散而 GD 收敛，正是 trust-region 最优性定理所预言的几何错配。Muon 在谱范数恢复目标上跨种子稳定降至 $0.03$ 平台，验证的是 trust-region 方向匹配，而非全局精度超越 GD。Polyak 最优 Heavy-ball 可看作 Chebyshev 半迭代的定常极限；实验 25 末段 gap 差距 $1.7\times 10^{-13}$。Newton--Schulz 收敛盆 $(0,\sqrt 3)$ 由实验 30 在 100 个初值上直接证实。
 
 \medskip
 \noindent\textbf{关键词：}Newton--Schulz 迭代；极分解；Muon 优化器；谱范数 trust-region；Chebyshev 半迭代；Heavy-ball；Nesterov 加速；动态预条件；ODE 离散化。
@@ -47,7 +47,7 @@
 \bibliography{references}
 
 \appendix
-\input{appendices/appendix_a}
+% \input{appendices/appendix_a}  % 附录 A：代码与 P_k 对照表（暂注释，需要时恢复）
 \input{appendices/appendix_b}
 \input{appendices/appendix_c}
 

@@ -1,9 +1,10 @@
 \section{数值实验}
 \label{sec:experiments}
 
-\subsection{环境与一键复现}
-
-项目入口为实验脚本 \texttt{run\_all.py} 与 \texttt{extended\_experiments.py}，全局超参在 \texttt{config.py}（MAX\_ITER=2000、SEED=42）。33 张图存于 \texttt{figures/} 目录，数值摘要存于 \texttt{data/}，14 项 pytest 覆盖优化器、谱半径、NS、CG、Chebyshev、ODE 与 Muon。
+% --- 6.1 环境与一键复现（暂注释，需要时取消注释即可恢复）---
+% \subsection{环境与一键复现}
+%
+% 项目入口为实验脚本 \texttt{run\_all.py} 与 \texttt{extended\_experiments.py}，全局超参在 \texttt{config.py}（MAX\_ITER=2000、SEED=42）。33 张图存于 \texttt{figures/} 目录，数值摘要存于 \texttt{data/}，14 项 pytest 覆盖优化器、谱半径、NS、CG、Chebyshev、ODE 与 Muon。
 
 \subsection{实验列表（精选）}
 
@@ -80,7 +81,7 @@ $\kappa \in \{10, 100, 1000\}$ 的三栏对照。Momentum 在所有 $\kappa$ 上
 
 \medskip
 \noindent\textbf{图 28（exp28，Muon 的主场）}\quad
-在谱范数 trust-region 损失上，5 个种子的 Muon 均收敛到 $0.028\sim 0.037$ 的稳定带，表明其正交化方向与谱范数几何相匹配。
+在谱范数 trust-region 损失 $\tfrac{1}{2}\|W-W^*\|_\sigma^2$ 上，5 个种子的 Muon 均单调下降到 $0.028\sim 0.037$ 的稳定带，表明其正交化方向与谱范数几何相匹配。
 
 \begin{figure}[H]
   \centering
@@ -92,3 +93,8 @@ $\kappa \in \{10, 100, 1000\}$ 的三栏对照。Momentum 在所有 $\kappa$ 上
   \caption{Muon 在谱范数 trust-region 损失上的表现（实验 28）}
   \label{fig:exp28}
 \end{figure}
+
+\medskip\noindent\textbf{读图说明（为何 GD 曲线更低、更快？）}\quad
+初值统一取 $W_0=0$ 时，Frobenius 梯度 $\nabla f(0)=0-W^*=-W^*$，GD 沿 $W^*$ 方向直线推进，对本实验随机生成的 $W^*$ 往往可将谱范数损失压至 $10^{-32}$ 量级（exp28 五种子的 GD 终值均 $\sim 10^{-32}$）。这是\textbf{初值与梯度形式的巧合}，并不表示 Muon 的全局最优性弱于 GD。
+
+Muon 每步对 $g_k=W_k-W^*$ 做 Newton--Schulz 正交化，得到的是定理~\ref{thm:muon-tr} 中\textbf{谱范数 trust-region 线性子问题}的最速下降方向，而非全局最小化 $\tfrac{1}{2}\|W-W^*\|_\sigma^2$ 的精确最速下降；因此 Muon 会稳定停在约 $0.03$ 的平台，而不会像 GD 那样在 $W_0=0$ 时直达机器精度。本图要验证的是：Muon 在谱范数几何下\textbf{跨种子稳定下降}（与 exp12 右图 Frobenius 二次上 Muon 发散形成对照），而非与 GD 比拼最终精度。
