@@ -30,6 +30,7 @@ from src.matrix_quadratic import (
     run_matrix_gd,
     run_matrix_muon,
 )
+from src.mlp_training import train_mlp
 from src.momentum_spectrum import optimal_polyak_params, worst_case_spectral_radius
 from src.newton_schulz import (
     chebyshev_ns_iterate,
@@ -1027,6 +1028,92 @@ def exp30_ns_convergence_basin() -> dict:
     }
 
 
+def exp31_real_mlp_digits() -> dict:
+    """E31: 真实数据（scikit-learn digits）上的单隐层 MLP 训练。
+
+    网络 x(64) -> W1(64x32) -> ReLU -> W2(32x10) -> softmax，两个矩阵权重
+    W1,W2 是真实参数层。比较 SGD / Adam / Muon：Muon 对矩阵梯度做 Newton-Schulz
+    正交化后更新，验证矩阵正交化预条件在真实分类任务上的可用性。
+    """
+    optimizers = [
+        ("sgd", "SGD (momentum)", "#1f77b4"),
+        ("adam", "Adam", "#2ca02c"),
+        ("muon", "Muon (NS orthogonalized)", "#d62728"),
+    ]
+    epochs = 60
+    seeds = SEEDS
+    results: dict = {}
+
+    # 收集每个优化器跨种子的曲线
+    loss_curves: dict[str, np.ndarray] = {}
+    acc_curves: dict[str, np.ndarray] = {}
+    meta = {}
+    for name, _, _ in optimizers:
+        losses, accs = [], []
+        for seed in seeds:
+            run = train_mlp(name, hidden=32, epochs=epochs, seed=seed)
+            losses.append(run["train_losses"])
+            accs.append(run["test_accs"])
+            meta = run  # 记录维度等元信息
+        loss_curves[name] = np.array(losses)
+        acc_curves[name] = np.array(accs)
+        results[f"{name}_final_test_acc_mean"] = float(
+            np.mean(acc_curves[name][:, -1])
+        )
+        results[f"{name}_final_test_acc_std"] = float(
+            np.std(acc_curves[name][:, -1])
+        )
+        results[f"{name}_best_test_acc_mean"] = float(
+            np.mean(np.max(acc_curves[name], axis=1))
+        )
+        results[f"{name}_final_train_loss_mean"] = float(
+            np.mean(loss_curves[name][:, -1])
+        )
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
+    epoch_axis = np.arange(loss_curves[optimizers[0][0]].shape[1])
+    for name, label, color in optimizers:
+        med = np.median(loss_curves[name], axis=0)
+        lo = np.percentile(loss_curves[name], 25, axis=0)
+        hi = np.percentile(loss_curves[name], 75, axis=0)
+        axes[0].semilogy(epoch_axis, np.maximum(med, 1e-6), color=color,
+                         linewidth=1.8, label=label)
+        axes[0].fill_between(epoch_axis, np.maximum(lo, 1e-6),
+                             np.maximum(hi, 1e-6), color=color, alpha=0.2)
+        med_acc = np.median(acc_curves[name], axis=0)
+        lo_a = np.percentile(acc_curves[name], 25, axis=0)
+        hi_a = np.percentile(acc_curves[name], 75, axis=0)
+        axes[1].plot(epoch_axis, med_acc, color=color, linewidth=1.8, label=label)
+        axes[1].fill_between(epoch_axis, lo_a, hi_a, color=color, alpha=0.2)
+
+    axes[0].set_xlabel("Epoch (full-batch)")
+    axes[0].set_ylabel("Training cross-entropy")
+    axes[0].set_title("Training loss")
+    axes[0].legend(fontsize=8)
+    axes[0].grid(True, alpha=0.3)
+    axes[1].set_xlabel("Epoch (full-batch)")
+    axes[1].set_ylabel("Test accuracy")
+    axes[1].set_title("Test accuracy")
+    axes[1].legend(fontsize=8, loc="lower right")
+    axes[1].grid(True, alpha=0.3)
+    fig.suptitle(
+        r"E31: single fully-connected layer on real digits "
+        rf"({meta['d_in']}$\to${meta['hidden']}$\to${meta['n_class']}, "
+        rf"{meta['n_train']} train / {meta['n_test']} test, {len(seeds)} seeds)",
+        fontsize=12,
+    )
+    fig.tight_layout()
+    fig.savefig(FIG_DIR / "exp31_mlp_digits.png", dpi=150)
+    plt.close(fig)
+
+    results["epochs"] = epochs
+    results["n_seeds"] = len(seeds)
+    results["n_train"] = meta["n_train"]
+    results["n_test"] = meta["n_test"]
+    results["architecture"] = f"{meta['d_in']}-{meta['hidden']}-{meta['n_class']}"
+    return results
+
+
 def run_all_extended() -> dict:
     return {
         "exp1b": exp1b_full_optimizer_panel(),
@@ -1049,4 +1136,5 @@ def run_all_extended() -> dict:
         "exp28_muon_tr": exp28_muon_on_trust_region(),
         "exp29_ode": exp29_nag_ode_vs_discrete(),
         "exp30_ns_basin": exp30_ns_convergence_basin(),
+        "exp31_mlp_digits": exp31_real_mlp_digits(),
     }

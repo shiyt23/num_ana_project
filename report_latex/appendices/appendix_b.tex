@@ -59,4 +59,33 @@
 \subsection{实验 30：Newton--Schulz 收敛盆}
 \label{app:exp30}
 
-\noindent 理论收敛盆上界 $\sqrt{3} \approx 1.7321$。在 100 个 $\sigma_0 \in [0.05, 2.5]$ 中，\textbf{11 个发散}，且全部满足 $\sigma_0 > \sqrt{3}$，与定理~\ref{thm:ns} 的预言完全一致。
+\noindent 理论收敛盆上界 $\sqrt{3} \approx 1.7321$。在 100 个 $\sigma_0 \in [0.05, 2.5]$ 中，\textbf{11 个发散}，且全部满足 $\sigma_0 > \sqrt{3}$，与命题~\ref{prop:basin} 的预言完全一致。
+
+\subsection{实验 31：真实数据全连接层训练}
+\label{app:exp31}
+
+\noindent 数据集 \texttt{digits}（$1797$ 张 $8\times 8$ 手写数字，$10$ 类），网络 $64\!\to\!32\!\to\!10$，整批训练 $60$ epoch，$5$ 种子。各优化器测试准确率（均值 $\pm$ 标准差）与最终训练损失如下。
+\begin{center}
+  \vspace{0.5em}
+  \begin{tabular}{@{}lccc@{}}
+    \toprule
+    优化器 & 测试准确率 & 峰值准确率 & 最终训练损失 \\
+    \midrule
+    SGD (momentum) & $0.961 \pm 0.006$ & $0.963$ & $9.2\times 10^{-3}$ \\
+    Adam           & $0.959 \pm 0.006$ & $0.962$ & $5.2\times 10^{-3}$ \\
+    Muon (NS)      & $0.961 \pm 0.005$ & $\mathbf{0.964}$ & $\mathbf{4.2\times 10^{-5}}$ \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.5em}
+\end{center}
+
+\subsection{关键实验设置汇总（可复现）}
+\label{app:settings}
+
+\noindent 全局：\texttt{config.py} 中 \texttt{SEED}=42、多种子 \texttt{SEEDS}$=\{0,1,2,42,123\}$、\texttt{MAX\_ITER}=2000、\texttt{TOL}$=10^{-6}$。各专项实验设置：
+\begin{itemize}[nosep]
+  \item \textbf{实验 12（谱范数恢复）}：$m\times n=16\times 8$，$W_0=0$，$80$ 步；$W^*=U\Sigma V^\top$，$U,V$ 为高斯矩阵 QR 正交因子（Haar），$\sigma_i\sim\mathrm{Uniform}[0.5,1.5]$；Muon $\eta=0.3$、$T_{\mathrm{ns}}=8$、$\beta=0$，GD $\eta=0.5$，Adam $\eta=0.3$。
+  \item \textbf{实验 12（Frobenius 对照）}：$16\times 8$，$\kappa(A)=100$，$A=Q\,\mathrm{diag}(\mathrm{geomspace}(1,100))\,Q^\top$，$W^*\sim\mathcal N(0,1)$、$B=AW^*$，$400$ 步；Muon $\eta=10^{-3}/L$、$T_{\mathrm{ns}}=8$。
+  \item \textbf{实验 28（trust-region）}：$m\times n=12\times 8$，$60$ 步，$5$ 种子，超参同实验 12 谱范数组。
+  \item \textbf{实验 31（真实数据 MLP）}：\texttt{digits}，$64\!\to\!32\!\to\!10$，标准化 + $70/30$ 划分，整批 $60$ epoch，$5$ 种子；Muon $\eta=0.5$、$T_{\mathrm{ns}}=5$、$\beta=0.9$，SGD $\eta=0.2$（动量 $0.9$），Adam $\eta=0.02$、$(\beta_1,\beta_2)=(0.9,0.999)$。
+\end{itemize}

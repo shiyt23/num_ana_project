@@ -29,6 +29,7 @@
     \textbf{28} & Muon 谱范数 trust-region & Muon 0.028$\sim$0.037 一致 \\
     \textbf{29} & NAG-ODE vs 离散 NAG/HB & NAG 与 AVD-ODE 相近 \\
     \textbf{30} & NS 收敛盆 $\sqrt 3$ & 11 个 $\sigma_0{>}\sqrt 3$ 全发散 \\
+    \textbf{31} & 真实数据 MLP 全连接层训练 & Muon/Adam/SGD test acc $\approx 0.96$，Muon 训练损失最低 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -81,7 +82,7 @@ $\kappa \in \{10, 100, 1000\}$ 的三栏对照。Momentum 在所有 $\kappa$ 上
 
 \medskip
 \noindent\textbf{图 28（exp28，Muon 的主场）}\quad
-在谱范数 trust-region 损失 $\tfrac{1}{2}\|W-W^*\|_\sigma^2$ 上，5 个种子的 Muon 均单调下降到 $0.028\sim 0.037$ 的稳定带，表明其正交化方向与谱范数几何相匹配。
+在谱范数 trust-region 损失 $\tfrac{1}{2}\|W-W^*\|_\sigma^2$ 上，5 个种子的 Muon 均单调下降到 $0.028\sim 0.037$ 的稳定带，表明其正交化方向与谱范数几何相匹配。本实验维度 $m\times n=12\times 8$、$W_0=0$、$60$ 步、Muon 取 $\eta=0.3$、$T_{\mathrm{ns}}=8$、$\beta=0$，$W^*$ 的生成分布与超参细节见 \S\ref{sec:ns-muon}。
 
 \begin{figure}[H]
   \centering
@@ -98,3 +99,25 @@ $\kappa \in \{10, 100, 1000\}$ 的三栏对照。Momentum 在所有 $\kappa$ 上
 初值统一取 $W_0=0$ 时，Frobenius 梯度 $\nabla f(0)=0-W^*=-W^*$，GD 沿 $W^*$ 方向直线推进，对本实验随机生成的 $W^*$ 往往可将谱范数损失压至 $10^{-32}$ 量级（exp28 五种子的 GD 终值均 $\sim 10^{-32}$）。这是\textbf{初值与梯度形式的巧合}，并不表示 Muon 的全局最优性弱于 GD。
 
 Muon 每步对 $g_k=W_k-W^*$ 做 Newton--Schulz 正交化，得到的是定理~\ref{thm:muon-tr} 中\textbf{谱范数 trust-region 线性子问题}的最速下降方向，而非全局最小化 $\tfrac{1}{2}\|W-W^*\|_\sigma^2$ 的精确最速下降；因此 Muon 会稳定停在约 $0.03$ 的平台，而不会像 GD 那样在 $W_0=0$ 时直达机器精度。本图要验证的是：Muon 在谱范数几何下\textbf{跨种子稳定下降}（与 exp12 右图 Frobenius 二次上 Muon 发散形成对照），而非与 GD 比拼最终精度。
+
+\subsection{真实数据上的全连接层训练（实验 31）}
+\label{sec:exp31}
+
+前述实验均在合成的二次/标量算例上进行，便于与谱半径、收敛盆等理论量逐项对齐。为检验矩阵正交化预条件在\textbf{真实参数层}上的可用性，实验 31 在 scikit-learn 自带的手写数字数据集 \texttt{digits}（$8\times 8$ 灰度，共 $1797$ 张、$10$ 类）上训练一个单隐层全连接网络
+\[
+  x\in\mathbb{R}^{64}\ \xrightarrow{\,W_1\in\mathbb{R}^{64\times 32}\,}\ \mathrm{ReLU}\ \xrightarrow{\,W_2\in\mathbb{R}^{32\times 10}\,}\ \mathrm{softmax},
+\]
+以交叉熵为损失。两个权重 $W_1,W_2$ 都是矩阵参数层，正是 Muon 的作用对象：Muon 对每个权重的梯度矩阵做 $T_{\mathrm{ns}}=5$ 步 Newton--Schulz 正交化（动量 $\beta=0.9$）后更新，偏置等向量参数退化为带动量的一阶更新。对照方法为带动量 SGD 与 Adam。特征按训练集统计量标准化，数据按 $70\%/30\%$ 划分为 $1258$ 训练 / $539$ 测试，整批（full-batch）训练 $60$ 个 epoch，跨 $5$ 个随机种子。
+
+三种方法在该真实任务上均稳定收敛，测试准确率高度接近：SGD 达 $0.961\pm 0.006$，Adam 达 $0.959\pm 0.006$，Muon 达 $0.961\pm 0.005$（峰值 $0.964$，三者中最高）。值得注意的是 Muon 的训练交叉熵下降到 $\sim 4\times 10^{-5}$，明显低于 Adam（$\sim 5\times 10^{-3}$）与 SGD（$\sim 9\times 10^{-3}$），说明其逐层正交化的更新方向在真实矩阵参数上同样能高效拟合训练数据，并保持与主流优化器相当的泛化。这与谱范数 trust-region 的解释一致：当被优化对象本身是矩阵参数层时，Muon 的正交化预条件给出了与 Adam/ SGD 不同但同样有效的下降几何。
+
+\begin{figure}[H]
+  \centering
+  \IfFileExists{../figures/exp31_mlp_digits.png}{%
+    \includegraphics[width=0.95\linewidth]{exp31_mlp_digits.png}%
+  }{%
+    \fbox{\parbox{0.8\linewidth}{\centering\vspace{2cm}图 exp31\vspace{2cm}}}%
+  }
+  \caption{真实数据（\texttt{digits}）上单隐层 MLP 的训练损失（左）与测试准确率（右），SGD / Adam / Muon 跨 5 种子的中位数与四分位带（实验 31）}
+  \label{fig:exp31}
+\end{figure}

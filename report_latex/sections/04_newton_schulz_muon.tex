@@ -37,9 +37,39 @@
 设 $G_k = X_k^\top X_k$。由 \eqref{eq:ns}，$G_{k+1} = \tfrac{1}{4} (3 I - G_k) G_k (3 I - G_k)$。代入 $G_k = I + E_k$，展开化简得 $E_{k+1} = -\tfrac{1}{4} E_k^2 (3 I - E_k)$。取 Frobenius 范数，当 $\|E_k\|_F < 1$ 时 $\|E_{k+1}\|_F < \|E_k\|_F^2$，即二次收敛。
 \end{proof}
 
-\textbf{收敛盆 $(0, \sqrt 3)$ 的标量证明}：设 $\sigma$ 是 $X_k$ 的某个奇异值，则迭代映射为 $\varphi(\sigma)=\sigma(3-\sigma^2)/2$。函数在 $\sigma \in (0,\sqrt3)$ 内保持在吸引盆中；当 $\sigma>\sqrt3$ 时通常进入发散轨道。
+\textbf{收敛盆的标量约简}：注意迭代 \eqref{eq:ns} 只通过 $X_k^\top X_k$ 作用于 $X_k$，因此它在奇异值上是\textbf{可对角化}的。设 $X_k = P_k \Sigma_k Q_k^\top$ 是 SVD，则 $X_k^\top X_k = Q_k \Sigma_k^2 Q_k^\top$，代入 \eqref{eq:ns} 得
+\begin{equation}
+  X_{k+1} = \tfrac{1}{2} P_k \Sigma_k\,(3I - \Sigma_k^2)\,Q_k^\top
+          = P_k\,\varphi(\Sigma_k)\,Q_k^\top,
+  \label{eq:ns-svd}
+\end{equation}
+其中 $\varphi$ 逐元素作用于奇异值。故 $X_k$ 始终保持初始奇异向量 $P_0,Q_0$ 不变，每个奇异值 $\sigma$ 独立地按标量映射
+\begin{equation}
+  \varphi(\sigma) = \tfrac{1}{2}\,\sigma\,(3 - \sigma^2)
+  \label{eq:ns-scalar}
+\end{equation}
+演化。于是矩阵迭代收敛到正交因子 $U=P_0 Q_0^\top$（即所有奇异值 $\to 1$）当且仅当每个初始奇异值都落在标量映射 \eqref{eq:ns-scalar} 收敛到 $1$ 的吸引盆内。这把定理~\ref{thm:ns} 的收敛盆问题严格化为对 $\varphi$ 的一维分析。
 
-\textbf{实验 30}：在 100 个初值 $\sigma_0 \in [0.05, 2.5]$ 上跑 NS，落在 $[0.05, \sqrt 3)$ 内的初值全部收敛；落在 $(\sqrt 3, 2.5]$ 的 11 个初值全部发散，与定理预言位级一致（图~\ref{fig:exp30}）。
+\begin{proposition}[标量收敛盆 $(0,\sqrt 3)$]
+\label{prop:basin}
+设 $\sigma_0 \in (0,\sqrt 3)$，按 \eqref{eq:ns-scalar} 定义 $\sigma_{k+1}=\varphi(\sigma_k)$，则 $\sigma_k \in (0,\sqrt 3)$ 对所有 $k$ 成立，且 $\sigma_k \to 1$；收敛是二次的：$|\sigma_{k+1}-1| \le \tfrac{3}{2}\,|\sigma_k - 1|^2$ 当 $\sigma_k$ 足够接近 $1$。若 $\sigma_0 > \sqrt 3$，则 $\sigma_1 < 0$ 且 $|\sigma_k|\to\infty$。
+\end{proposition}
+
+\begin{proof}[证明（要点）]
+在 $(0,\infty)$ 上 $\varphi$ 的不动点由 $\varphi(\sigma)=\sigma$ 即 $\sigma(1-\sigma^2)=0$ 给出，正实轴上唯一非零不动点为 $\sigma^*=1$；又 $\varphi'(\sigma)=\tfrac{3}{2}(1-\sigma^2)$，故 $\varphi'(1)=0$，即 $\sigma^*=1$ 是\textbf{超吸引}不动点（这正是二次收敛的来源）。
+
+\emph{区间 $(0,1]$}：此处 $\varphi'(\sigma)=\tfrac{3}{2}(1-\sigma^2)\ge 0$，$\varphi$ 单调不减，$\varphi(0)=0$、$\varphi(1)=1$，故 $\varphi$ 把 $(0,1]$ 映入 $(0,1]$。又 $\varphi(\sigma)-\sigma=\tfrac{1}{2}\sigma(1-\sigma^2)>0$ 对 $\sigma\in(0,1)$ 成立，于是 $\{\sigma_k\}$ 单调递增且以 $1$ 为上界，必收敛；极限只能是不动点 $1$。
+
+\emph{区间 $(1,\sqrt 3)$}：此处 $\varphi$ 单调递减，$\varphi(1)=1$、$\varphi(\sqrt3)=0$，故 $\varphi\bigl((1,\sqrt3)\bigr)=(0,1)$。因此任何 $\sigma_0\in(1,\sqrt3)$ 一步后落入 $(0,1)$，随后归结为上一情形，单调递增收敛到 $1$。综合两段，$(0,\sqrt3)$ 是 $1$ 的吸引盆且迭代始终保持在 $(0,\sqrt3)$ 内。
+
+\emph{二次速率}：令 $e_k=\sigma_k-1$，由 $\varphi(\sigma)=1-\tfrac{3}{2}(\sigma-1)^2-\tfrac{1}{2}(\sigma-1)^3$ 直接展开得 $e_{k+1}=-\tfrac{3}{2}e_k^2-\tfrac{1}{2}e_k^3$，故 $|e_{k+1}|\le\tfrac{3}{2}|e_k|^2$（$|e_k|\le1$ 时），与正文递推 $E_{k+1}=-\tfrac{1}{4}E_k^2(3I-E_k)$ 在标量化后一致。
+
+\emph{发散侧}：若 $\sigma_0>\sqrt3$ 则 $3-\sigma_0^2<0$，故 $\sigma_1=\tfrac12\sigma_0(3-\sigma_0^2)<0$；此后 $|\varphi(\sigma)|\sim\tfrac12|\sigma|^3$ 主导，$|\sigma_k|\to\infty$。$\square$
+\end{proof}
+
+\noindent 命题~\ref{prop:basin} 给出定理~\ref{thm:ns} 中收敛盆断言的完整证明；完整推导见附录~\ref{app:proofs}。
+
+\textbf{实验 30}：在 100 个初值 $\sigma_0 \in [0.05, 2.5]$ 上跑 NS，落在 $[0.05, \sqrt 3)$ 内的初值全部收敛；落在 $(\sqrt 3, 2.5]$ 的 11 个初值全部发散，与命题~\ref{prop:basin} 的预言完全一致（图~\ref{fig:exp30}）。
 
 \begin{figure}[htbp]
   \centering
@@ -68,13 +98,17 @@ Muon 的更新规则 \cite{jordan2024muon}：
   \caption{Muon 优化器（矩阵参数）}
   \label{alg:muon}
   \begin{algorithmic}[1]
-    \Require 矩阵参数 $W$，损失 $f(W)$，步长 $\eta$，动量参数
+    \Require 矩阵参数 $W$，损失 $f(W)$，步长 $\eta$，动量系数 $\beta\in[0,1)$，Newton--Schulz 步数 $T_{\mathrm{ns}}$
     \Ensure 更新后的 $W_{k+1}$
-    \State 计算带 Nesterov 动量的梯度矩阵 $M_k$
-    \State $\widetilde M_k \gets \textsc{NewtonSchulz}(M_k)$ \Comment{算法~\ref{alg:ns}}
+    \State 初始化动量缓冲 $B_0 \gets 0$
+    \State $G_k \gets \nabla f(W_k)$；\quad $B_{k+1} \gets \beta B_k + G_k$
+    \State $M_k \gets G_k + \beta B_{k+1}$ \Comment{Nesterov 动量梯度；$\beta=0$ 时 $M_k=G_k$}
+    \State $\widetilde M_k \gets \textsc{NewtonSchulz}(M_k,\, T_{\mathrm{ns}})$ \Comment{算法~\ref{alg:ns}，迭代 $T_{\mathrm{ns}}$ 步}
     \State $W_{k+1} \gets W_k - \eta\, \widetilde M_k$
   \end{algorithmic}
 \end{algorithm}
+
+\noindent 本文实验中 Newton--Schulz 步数取 $T_{\mathrm{ns}}=8$（矩阵二次/谱范数实验）或 $5$（真实数据训练，见 \S\ref{sec:experiments} 实验 31）；动量系数在受控对照实验（实验 12、28）中取 $\beta=0$，即直接对原始梯度做正交化以隔离正交化方向的几何效应，在真实训练实验中取 $\beta=0.9$。
 
 \begin{theorem}[极分解的 trust-region 最优性]
 \label{thm:muon-tr}
@@ -101,7 +135,10 @@ Muon 的更新规则 \cite{jordan2024muon}：
 \[
   \min_{W \in \mathbb{R}^{m\times n}} f(W) = \tfrac{1}{2} \|W - W^*\|_\sigma^2,
 \]
-其中 $\|\cdot\|_\sigma$ 是谱范数。实验 12 左图（80 步、$W_0=0$）：Muon-NS 从 1.077 降到 \textbf{0.037}；GD 终值 $2.4\times 10^{-32}$、Adam 终值 $1.1\times 10^{-4}$。注意 $W_0=0$ 时 $\nabla f(0)=-W^*$，GD 沿 $W^*$ 直线下降，故左图中 GD 曲线往往最低——这是初值巧合，详见 \S\ref{sec:experiments} 对图~\ref{fig:exp28} 的读图说明。实验 28 在 5 个种子上 Muon 最终损失 0.028$\sim$0.037 高度一致。
+其中 $\|\cdot\|_\sigma$ 是谱范数。
+
+\paragraph{实验设置与可复现细节。}\quad
+谱范数恢复实验中 $W^*$ 由 $W^*=U\Sigma V^\top$ 生成：$U\in\mathbb{R}^{m\times r}$、$V\in\mathbb{R}^{n\times r}$（$r=\min(m,n)$）取标准正态随机矩阵的 QR 正交因子（Haar 分布），奇异值 $\sigma_i\stackrel{\text{iid}}{\sim}\mathrm{Uniform}[0.5,1.5]$。所有方法均从 $W_0=0$ 出发。实验 12 取维度 $m\times n=16\times 8$、迭代 $80$ 步，Muon 步长 $\eta=0.3$、$T_{\mathrm{ns}}=8$、$\beta=0$，GD 步长 $0.5$，Adam 步长 $0.3$（默认 $(\beta_1,\beta_2)=(0.9,0.999)$）。实验 12 右图的 Frobenius 对照取矩阵二次 $\tfrac12\|AW-B\|_F^2$，$A=Q\,\mathrm{diag}(\mathrm{geomspace}(1,100))\,Q^\top$（$\kappa(A)=100$，$Q$ 为 Haar 正交阵），$W^*$ 元素 iid $\mathcal N(0,1)$、$B=AW^*$，维度 $16\times 8$、$400$ 步，Muon 取 $\eta=10^{-3}/L$、$T_{\mathrm{ns}}=8$。实验 28 取 $m\times n=12\times 8$、$60$ 步、$5$ 个随机种子，超参与实验 12 谱范数组一致。全部随机数由固定种子（主实验 \texttt{seed}=42，多种子实验 \texttt{seed}$\in\{0,\dots,4\}$）控制。实验 12 左图（80 步、$W_0=0$）：Muon-NS 从 1.077 降到 \textbf{0.037}；GD 终值 $2.4\times 10^{-32}$、Adam 终值 $1.1\times 10^{-4}$。注意 $W_0=0$ 时 $\nabla f(0)=-W^*$，GD 沿 $W^*$ 直线下降，故左图中 GD 曲线往往最低——这是初值巧合，详见 \S\ref{sec:experiments} 对图~\ref{fig:exp28} 的读图说明。实验 28 在 5 个种子上 Muon 最终损失 0.028$\sim$0.037 高度一致。
 
 \textbf{与 Frobenius 矩阵二次的对照}（exp12 右图）：在 $\min_W \tfrac{1}{2}\|AW - B\|_F^2$ 上 Frobenius GD 降到 $f - f^* = 51$，Muon 反而高达 63266——这才是 Muon 与 GD 几何错配的典型表现，也是定理~\ref{thm:muon-tr} 的直接含义。
 

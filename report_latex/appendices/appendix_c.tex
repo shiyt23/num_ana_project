@@ -31,6 +31,35 @@ Chebyshev 半迭代（Hageman--Young 形式）：
 
 $\beta_1 = 0$ 时 $\hat m_k = g_k$；$v_k$ 趋于 $\mathbb{E}[g \odot g]$。对二次问题 $g(x) = A(x - x^*)$，当 $A$ 对角且 $\Sigma \propto I$ 时 $\mathbb{E}[g \odot g]\propto \mathrm{diag}(A)^2$，故 $P_k \approx \eta\,\mathrm{diag}(A)^{-1}$，恰为 Jacobi 预条件器。$\square$
 
-\subsection{定理~\ref{thm:ns}、定理~\ref{thm:muon-tr} 的证明}
+\subsection{定理~\ref{thm:ns} 与命题~\ref{prop:basin} 的证明（Newton--Schulz 收敛盆）}
 
-定理~\ref{thm:ns} 的完整证明见正文 \S\ref{sec:ns-muon}；定理~\ref{thm:muon-tr} 的证明见正文，基于 von Neumann 迹不等式取等条件。
+定理~\ref{thm:ns} 的误差递推 $E_{k+1}=-\tfrac14 E_k^2(3I-E_k)$ 的推导见正文 \S\ref{sec:ns-muon}。这里补全收敛盆 $(0,\sqrt3)$ 的严格证明。
+
+\textbf{第一步：约简到标量映射。}\quad 迭代 \eqref{eq:ns} 只经 $X_k^\top X_k$ 作用于 $X_k$。设 $X_k=P_k\Sigma_k Q_k^\top$ 为 SVD，则 $X_k^\top X_k=Q_k\Sigma_k^2 Q_k^\top$，代入得
+\[
+  X_{k+1}=\tfrac12 P_k\Sigma_k(3I-\Sigma_k^2)Q_k^\top=P_k\,\varphi(\Sigma_k)\,Q_k^\top,
+  \qquad \varphi(\sigma)=\tfrac12\sigma(3-\sigma^2).
+\]
+故奇异向量 $P_k\equiv P_0,\ Q_k\equiv Q_0$ 不随迭代改变，全部动力学集中在奇异值上：$\sigma^{(i)}_{k+1}=\varphi(\sigma^{(i)}_k)$，各分量解耦。$X_k\to U=P_0 Q_0^\top$（极分解正交因子）当且仅当所有 $\sigma^{(i)}_k\to1$。
+
+\textbf{第二步：标量映射 $\varphi$ 在 $(0,\sqrt3)$ 上收敛到 $1$。}\quad
+不动点方程 $\varphi(\sigma)=\sigma$ 化为 $\sigma(1-\sigma^2)=0$，正实轴上唯一非零不动点为 $\sigma^*=1$。导数 $\varphi'(\sigma)=\tfrac32(1-\sigma^2)$，于是 $\varphi'(1)=0$，$\sigma^*=1$ 为超吸引不动点。
+
+\emph{(a) $\sigma\in(0,1]$。}\quad 此区间上 $\varphi'(\sigma)\ge0$，$\varphi$ 单调不减，且 $\varphi(0)=0,\varphi(1)=1$，故 $\varphi$ 自映 $(0,1]$。差式 $\varphi(\sigma)-\sigma=\tfrac12\sigma(1-\sigma^2)>0$（$\sigma\in(0,1)$），故迭代序列单调递增、上有界于 $1$，从而收敛，且极限为该区间唯一不动点 $1$。
+
+\emph{(b) $\sigma\in(1,\sqrt3)$。}\quad 此区间上 $\varphi'(\sigma)<0$，$\varphi$ 单调递减，$\varphi(1)=1,\ \varphi(\sqrt3)=0$，故 $\varphi\bigl((1,\sqrt3)\bigr)=(0,1)$。任何此区间内的 $\sigma_0$ 一步后进入 $(0,1)$，回到情形 (a)，单调递增收敛到 $1$。
+
+合并 (a)(b)：$(0,\sqrt3)$ 整体是 $\sigma^*=1$ 的吸引盆，且迭代恒保持在 $(0,\sqrt3)$ 内（不会逃逸）。
+
+\textbf{第三步：二次收敛率。}\quad 令 $e_k=\sigma_k-1$。在 $\sigma=1$ 处 Taylor 展开 $\varphi(\sigma)=\varphi(1)+\varphi'(1)(\sigma-1)+\tfrac12\varphi''(1)(\sigma-1)^2+\tfrac16\varphi'''(1)(\sigma-1)^3$，其中 $\varphi'(1)=0,\ \varphi''(\sigma)=-3\sigma\Rightarrow\varphi''(1)=-3,\ \varphi'''(\sigma)=-3\Rightarrow\varphi'''(1)=-3$，得
+\[
+  e_{k+1}=-\tfrac32 e_k^2-\tfrac12 e_k^3,
+  \qquad |e_{k+1}|\le\tfrac32|e_k|^2\ \ (|e_k|\le1).
+\]
+这与正文矩阵递推 $E_{k+1}=-\tfrac14E_k^2(3I-E_k)$ 在标量化（$E_k=\sigma_k^2-1$）下完全一致：$\sigma_k^2-1\approx2e_k$ 时两式同阶。
+
+\textbf{第四步：发散侧。}\quad 若 $\sigma_0>\sqrt3$，则 $3-\sigma_0^2<0$，故 $\sigma_1=\tfrac12\sigma_0(3-\sigma_0^2)<0$；当 $|\sigma|$ 较大时 $\varphi(\sigma)\approx-\tfrac12\sigma^3$，$|\sigma_k|$ 以三次速度发散。这解释了实验 30 中 $\sigma_0>\sqrt3$ 的 $11$ 个初值全部发散。$\square$
+
+\subsection{定理~\ref{thm:muon-tr} 的证明}
+
+定理~\ref{thm:muon-tr} 的证明见正文 \S\ref{sec:ns-muon}，基于 von Neumann 迹不等式取等条件。

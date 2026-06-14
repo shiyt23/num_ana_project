@@ -9,4 +9,5 @@
   \item \textbf{Muon 的真本质}是谱范数 trust-region 线性子问题的最速下降方向（定理~\ref{thm:muon-tr}）：它与 GD 优化\textbf{不同的每步子问题}，不宜在同一 Frobenius/谱范数损失上简单比优劣（详见 \S\ref{sec:muon-vs-gd}）。实验表明：Frobenius 二次上 Muon 与 GD 几何错配（exp12 右）；谱范数恢复上 Muon 跨种子稳定下降（exp28），而 GD 在 $W_0=0$ 时因初值巧合更快。
   \item \textbf{Adam 2-极限环}（实验 26）复现 Bock \& Wei{\ss} (2022)：即使最简凸 $f(x) = x^2/2$ 上 Adam 也可能不收敛。
   \item \textbf{NAG $\leftrightarrow$ ODE}（实验 29）：AVD-ODE 的 RK4 解与离散 NAG 在 $t = \sqrt\eta k$ 下呈现相近轨迹。
+  \item \textbf{真实数据上的验证}（实验 31）：在 \texttt{digits} 手写数字上训练单隐层全连接网络，Muon 的逐层 Newton--Schulz 正交化更新跨 5 种子取得与 Adam/SGD 相当的测试准确率（约 $0.96$），且训练交叉熵下降到更低的 $\sim 4\times 10^{-5}$，说明矩阵正交化预条件在真实矩阵参数层上同样有效，而非仅在合成算例上成立。
 \end{enumerate}

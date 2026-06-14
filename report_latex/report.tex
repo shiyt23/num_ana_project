@@ -21,11 +21,11 @@
 \begin{enumerate}[nosep]
   \item \textbf{完整的数值分析视角推导}：给出 GD 在强凸二次上的线性收敛、Heavy-ball 谱半径最优性、Heavy-ball 作为 Chebyshev 半迭代定常极限的关系、Newton--Schulz 二次收敛（含 $E_{k+1}=-\tfrac{1}{4}E_k^2(3I-E_k)$ 完整推导）、以及极分解作为谱范数 trust-region 线性子问题最速下降方向的最优性证明。
   \item \textbf{三条前沿链条}：把 Muon 的 trust-region 解释、Adam/AdamW 收敛与 Bock--Wei{\ss} 极限环、Su--Boyd--Cand{\`e}s AVD-ODE 和高分辨率 ODE 全部纳入同一个 $x_{k+1}=x_k-P_k g_k$ 模板下讨论。
-  \item \textbf{20 组数值实验}：覆盖病态二次 ($\kappa\in\{10,100,10000\}$)、谱范数 trust-region 损失、Heavy-ball/Chebyshev 定常极限关系、Adam 2-极限环、NAG-ODE 与离散迭代的相图对照、Newton--Schulz 收敛盆边界 $\sqrt 3$ 的直接观测。
-  \item \textbf{代码与可复现}：14 项 pytest + 一键复现脚本 + 33 张图自动生成；图表与正文 claim 数值上严格对齐。
+  \item \textbf{31 组数值实验}：覆盖病态二次 ($\kappa\in\{10,100,10000\}$)、谱范数 trust-region 损失、Heavy-ball/Chebyshev 定常极限关系、Adam 2-极限环、NAG-ODE 与离散迭代的相图对照、Newton--Schulz 收敛盆边界 $\sqrt 3$ 的直接观测，以及在真实手写数字数据集上对一个全连接层的训练对照。
+  \item \textbf{代码与可复现}：pytest 单元测试 + 一键复现脚本 + 34 张图自动生成；图表与正文 claim 数值上严格对齐。
 \end{enumerate}
 
-关键发现：Muon 与 GD 优化\textbf{不同的每步几何}（谱范数 trust-region vs Frobenius 梯度），不宜在同一损失上简单比优劣；在 Frobenius 矩阵二次上 Muon 发散而 GD 收敛，正是 trust-region 最优性定理所预言的几何错配。Muon 在谱范数恢复目标上跨种子稳定降至 $0.03$ 平台，验证的是 trust-region 方向匹配，而非全局精度超越 GD。Polyak 最优 Heavy-ball 可看作 Chebyshev 半迭代的定常极限；实验 25 末段 gap 差距 $1.7\times 10^{-13}$。Newton--Schulz 收敛盆 $(0,\sqrt 3)$ 由实验 30 在 100 个初值上直接证实。
+关键发现：Muon 与 GD 优化\textbf{不同的每步几何}（谱范数 trust-region vs Frobenius 梯度），不宜在同一损失上简单比优劣；在 Frobenius 矩阵二次上 Muon 发散而 GD 收敛，正是 trust-region 最优性定理所预言的几何错配。Muon 在谱范数恢复目标上跨种子稳定降至 $0.03$ 平台，验证的是 trust-region 方向匹配，而非全局精度超越 GD。Polyak 最优 Heavy-ball 可看作 Chebyshev 半迭代的定常极限；实验 25 末段 gap 差距 $1.7\times 10^{-13}$。Newton--Schulz 收敛盆 $(0,\sqrt 3)$ 由实验 30 在 100 个初值上直接证实，并在标量约简下给出严格收敛性证明。在真实手写数字数据集上训练一个全连接层时，Muon 的逐层正交化更新取得与 Adam/SGD 相当的测试准确率（约 $0.96$）且训练损失更低。
 
 \medskip
 \noindent\textbf{关键词：}Newton--Schulz 迭代；极分解；Muon 优化器；谱范数 trust-region；Chebyshev 半迭代；Heavy-ball；Nesterov 加速；动态预条件；ODE 离散化。
